@@ -124,6 +124,7 @@ import Text.Pandoc.Writers.TEI
 import Text.Pandoc.Writers.Texinfo
 import Text.Pandoc.Writers.Textile
 import Text.Pandoc.Writers.Typst
+import Text.Pandoc.Writers.TiddlyWiki
 import Text.Pandoc.Writers.XWiki
 import Text.Pandoc.Writers.ZimWiki
 
@@ -197,6 +198,7 @@ writers = [
   ,("biblatex"     , TextWriter writeBibLaTeX)
   ,("markua"       , TextWriter writeMarkua)
   ,("chunkedhtml"  , ByteStringWriter writeChunkedHTML)
+  ,("tiddlywiki"   , TextWriter writeTiddlyWiki)
   ]
 
 -- | Retrieve writer, extensions based on formatSpec (format+extensions).

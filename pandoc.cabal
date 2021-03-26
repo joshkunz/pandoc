@@ -94,6 +94,7 @@ data-files:
                  data/templates/default.org
                  data/templates/default.epub2
                  data/templates/default.epub3
+                 data/templates/default.tiddlywiki
                  data/templates/article.jats_publishing
                  data/templates/affiliations.jats
                  data/templates/default.markua
@@ -320,6 +321,7 @@ extra-source-files:
                  test/tables.fb2
                  test/tables.muse
                  test/tables.xwiki
+                 test/tables.tiddlywiki
                  test/tables/*.html4
                  test/tables/*.html5
                  test/tables/*.latex
@@ -361,6 +363,8 @@ extra-source-files:
                  test/writer.zimwiki
                  test/writer.xwiki
                  test/writer.muse
+                 test/writer.custom
+                 test/writer.tiddlywiki
                  test/writers-lang-and-dir.latex
                  test/writers-lang-and-dir.context
                  test/dokuwiki_inline_formatting.dokuwiki
@@ -622,6 +626,8 @@ library
                    Text.Pandoc.Writers.OOXML,
                    Text.Pandoc.Writers.AnnotatedTable,
                    Text.Pandoc.Writers.BibTeX,
+                   Text.Pandoc.Writers.TiddlyWiki,
+                   Text.Pandoc.Lua,
                    Text.Pandoc.PDF,
                    Text.Pandoc.UTF8,
                    Text.Pandoc.Scripting,

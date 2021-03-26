@@ -237,6 +237,9 @@ tests pandocPath =
       "ipynb/rank.ipynb" "ipynb/rank.out.html"
     ]
   , testGroup "markua" [ testGroup "writer" $ writerTests' "markua"]
+  , testGroup "tiddlywiki"
+    [ testGroup "writer" $ writerTests' "tiddlywiki"
+    ]
   ]
  where
     test'           = test pandocPath
