@@ -120,6 +120,7 @@ import Text.Pandoc.Writers.RTF
 import Text.Pandoc.Writers.TEI
 import Text.Pandoc.Writers.Texinfo
 import Text.Pandoc.Writers.Textile
+import Text.Pandoc.Writers.TiddlyWiki
 import Text.Pandoc.Writers.XWiki
 import Text.Pandoc.Writers.ZimWiki
 import Text.Parsec.Error
@@ -190,6 +191,7 @@ writers = [
   ,("csljson"      , TextWriter writeCslJson)
   ,("bibtex"       , TextWriter writeBibTeX)
   ,("biblatex"     , TextWriter writeBibLaTeX)
+  ,("tiddlywiki"   , TextWriter writeTiddlyWiki)
   ]
 
 -- | Retrieve writer, extensions based on formatSpec (format+extensions).

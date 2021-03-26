@@ -217,6 +217,9 @@ tests pandocPath =
                       "ipynb-raw_html-raw_tex+raw_attribute", "-s"]
       "ipynb/simple.in.native" "ipynb/simple.ipynb"
     ]
+  , testGroup "tiddlywiki"
+    [ testGroup "writer" $ writerTests' "tiddlywiki"
+    ]
   ]
  where
     test'           = test pandocPath
