@@ -45,6 +45,12 @@ There should be a hard line breakhere.
 ! Block Quotes
 E-mail style:
 
+
+>>>
+This is a block quote.
+It is pretty short.
+
+<<<
 This should not be a block quote: 2
 > 1.
 
@@ -147,7 +153,16 @@ And nested without indentation:
 
 Interpreted markdown in a table:
 
-<table><tr><td>This is //emphasized//</td><td>And this is ''strong''</td></tr></table><script type="text/javascript">document.write('This *should not* be interpreted as markdown');</script>Here’s a simple block:
+<table>
+<tr>
+<td>
+This is //emphasized//</td>
+<td>
+And this is ''strong''</td>
+</tr>
+</table>
+<script type="text/javascript">document.write('This *should not* be interpreted as markdown');</script>
+Here’s a simple block:
 
 This should be a code block, though:
 
@@ -167,14 +182,17 @@ Now, nested:
 
 This should just be an HTML comment:
 
-<!-- Comment -->Multiline:
+<!-- Comment -->
+Multiline:
 
 <!--
 Blah
 Blah
---><!--
+-->
+<!--
     This is another comment.
--->Code block:
+-->
+Code block:
 
 
 ```
@@ -182,7 +200,8 @@ Blah
 ```
 Just plain comment, with trailing spaces on the line:
 
-<!-- foo -->Code:
+<!-- foo -->
+Code:
 
 
 ```
@@ -190,7 +209,16 @@ Just plain comment, with trailing spaces on the line:
 ```
 Hr’s:
 
-<hr><hr /><hr /><hr><hr /><hr /><hr class="foo" id="bar" /><hr class="foo" id="bar" /><hr class="foo" id="bar">---
+<hr>
+<hr />
+<hr />
+<hr>
+<hr />
+<hr />
+<hr class="foo" id="bar" />
+<hr class="foo" id="bar" />
+<hr class="foo" id="bar">
+---
 
 ! Inline Markup
 This is //emphasized//, and so //is this//.
@@ -356,6 +384,11 @@ With an ampersand: [[http://example.com/?foo=1&bar=2|http://example.com/?foo=1&b
 
 An e-mail address: [[nobody@nowhere.net|mailto:nobody@nowhere.net]]
 
+
+>>>
+Blockquoted: [[http://example.com/|http://example.com/]]
+
+<<<
 Auto-links should not occur here: `<http://example.com/>`
 
 
@@ -378,5 +411,10 @@ Here is a footnote reference, and another.
 This should //not// be a footnote reference, because it
 contains a space.[^my note] Here is an inline note.
 
+
+>>>
+Notes can go in quotes.
+
+<<<
 This paragraph should not be part of the note, as it is not indented.
 

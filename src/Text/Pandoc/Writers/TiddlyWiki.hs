@@ -17,6 +17,10 @@ writeTiddlyWiki _ (Pandoc _ blocks) = writeBlocks blocks
 repeatString :: Int -> String -> String
 repeatString n = mconcat . replicate n
 
+isBlockQuote :: Block -> Bool
+isBlockQuote (BlockQuote _) = True
+isBlockQuote _ = False
+
 writeBlocks :: PandocMonad m => [Block] -> m Text
 writeBlocks blocks = (fmap mconcat) . mapM writeBlock $ blocks
 
@@ -49,6 +53,13 @@ writeBlock (LineBlock iss) =
 
 -- TODO(jkz): Actually handle attrs.
 writeBlock (CodeBlock _ text) = return . surround "\n```\n" $ text
+
+writeBlock b@(BlockQuote bs)
+    -- TODO(jkz): Support nested block quotes.
+    | any isBlockQuote bs = T.empty <$ report (BlockNotRendered b)
+    | otherwise           =
+        wrapQuote <$> writeBlocks bs
+        where wrapQuote t = "\n>>>\n" <> t <> "<<<\n"
 
 -- TODO(jkz): Handle all cases.
 writeBlock b = T.empty <$ report (BlockNotRendered b)
