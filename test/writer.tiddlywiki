@@ -173,7 +173,7 @@ So is ''//this//'' word.
 
 So is ''//this//'' word.
 
-This is code: , , , , .
+This is code: `>`, `$`, `\`, `\$`, `<html>`.
 
 ~~This is //strikeout//.~~
 
@@ -318,7 +318,7 @@ With an ampersand:
 
 An e-mail address: 
 
-Auto-links should not occur here: 
+Auto-links should not occur here: `<http://example.com/>`
 
 ---
 
