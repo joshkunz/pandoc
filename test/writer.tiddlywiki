@@ -1,26 +1,279 @@
----
+This is a set of tests for pandoc. Most of them are adapted from John Gruber’s markdown test suite. 
+
 
 ---
+with no blank line 
+
+with no blank line 
+
 
 ---
+Here’s a regular paragraph. 
+
+In Markdown 1.0.0 and earlier. Version 8. This line turns into a list item. Because a hard-wrapped line in the middle of a paragraph looked like a list item. 
+
+Here’s one with a bullet. * criminey. 
+
+There should be a hard line break here. 
+
 
 ---
+E-mail style: 
+
+This should not be a block quote: 2 > 1. 
+
+And a following paragraph. 
+
 
 ---
+Code: 
+
+And: 
+
 
 ---
+Asterisks tight: 
+
+Asterisks loose: 
+
+Pluses tight: 
+
+Pluses loose: 
+
+Minuses tight: 
+
+Minuses loose: 
+
+Tight: 
+
+and: 
+
+Loose using tabs: 
+
+and using spaces: 
+
+Multiple paragraphs: 
+
+Here’s another: 
+
+Same thing but with paragraphs: 
+
+Nesting: 
+
+Autonumbering: 
+
+Should not be a list item: 
+
+M.A. 2007 
+
+B. Williams 
+
 
 ---
+Tight using spaces: 
+
+Tight using tabs: 
+
+Loose: 
+
+Multiple blocks with italics: 
+
+Multiple definitions, tight: 
+
+Multiple definitions, loose: 
+
+Blank line after term, indented marker, alternate markers: 
+
+Simple block on one line: 
+
+And nested without indentation: 
+
+Interpreted markdown in a table: 
+
+<table><tr><td>This is </td><td>And this is </td></tr></table><script type="text/javascript">document.write('This *should not* be interpreted as markdown');</script>Here’s a simple block: 
+
+This should be a code block, though: 
+
+As should this: 
+
+Now, nested: 
+
+This should just be an HTML comment: 
+
+<!-- Comment -->Multiline: 
+
+<!--
+Blah
+Blah
+--><!--
+    This is another comment.
+-->Code block: 
+
+Just plain comment, with trailing spaces on the line: 
+
+<!-- foo -->Code: 
+
+Hr’s: 
+
+<hr><hr /><hr /><hr><hr /><hr /><hr class="foo" id="bar" /><hr class="foo" id="bar" /><hr class="foo" id="bar">
+---
+This is , and so . 
+
+This is , and so . 
+
+An . 
+
+
+
+So is word. 
+
+
+
+So is word. 
+
+This is code: , , , , . 
+
+
+
+Superscripts: a d a a . 
+
+Subscripts: H O, H O, H O. 
+
+These should not be superscripts or subscripts, because of the unescaped spaces: a^b c^d, a~b c~d. 
+
 
 ---
+said the spider. 
+
+, , and are letters. 
+
+and are names of trees. So is 
+
+Were you alive in the 70’s? 
+
+Here is some quoted and a . 
+
+Some dashes: one—two — three—four — five. 
+
+Dashes between numbers: 5–7, 255–66, 1987–1999. 
+
+Ellipses…and…and…. 
+
 
 ---
+These shouldn’t be math: 
+
+Here’s a LaTeX table: 
+
 
 ---
+Here is some unicode: 
+
+AT&T has an ampersand in their name. 
+
+AT&T is another way to write it. 
+
+This & that. 
+
+4 < 5. 
+
+6 > 5. 
+
+Backslash: \ 
+
+Backtick: ` 
+
+Asterisk: * 
+
+Underscore: _ 
+
+Left brace: { 
+
+Right brace: } 
+
+Left bracket: [ 
+
+Right bracket: ] 
+
+Left paren: ( 
+
+Right paren: ) 
+
+Greater-than: > 
+
+Hash: # 
+
+Period: . 
+
+Bang: ! 
+
+Plus: + 
+
+Minus: - 
+
 
 ---
+Just a . 
+
+. 
+
+. 
+
+. 
+
+
+
+
+
+
+
+
+
+. 
+
+Foo . 
+
+With . 
+
+by itself should be a link. 
+
+Indented . 
+
+Indented . 
+
+Indented . 
+
+This should [not][] be a link. 
+
+Foo . 
+
+Foo . 
+
+Here’s a . 
+
+Here’s a link with an amersand in the link text: . 
+
+Here’s an . 
+
+Here’s an . 
+
+With an ampersand: 
+
+An e-mail address: 
+
+Auto-links should not occur here: 
+
 
 ---
+From by Georges Melies (1902): 
+
+
+
+Here is a movie icon. 
+
 
 ---
+Here is a footnote reference, and another. This should be a footnote reference, because it contains a space.[^my note] Here is an inline note. 
+
+This paragraph should not be part of the note, as it is not indented. 
 
