@@ -42,7 +42,7 @@ writeBlock (Header level _ inlines) =
     where header v = mconcat ["\n", T.pack (repeatString level "!"), " ", v, "\n"]
 
 -- TODO(jkz): Handle all cases.
-writeBlock _ = return T.empty
+writeBlock b = T.empty <$ report (BlockNotRendered b)
 
 writeInlines :: PandocMonad m => [Inline] -> m Text
 writeInlines inlines =
@@ -56,4 +56,4 @@ writeInline SoftBreak = return "\n"
 writeInline (Str t) = return t
 
 -- TODO(jkz): Handle all inlines.
-writeInline _ = return T.empty
+writeInline i = T.empty <$ report (InlineNotRendered i)
