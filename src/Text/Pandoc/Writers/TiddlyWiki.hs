@@ -8,6 +8,7 @@ import Text.Pandoc.Class.PandocMonad (PandocMonad, report)
 import Text.Pandoc.Options (WriterOptions)
 import Text.Pandoc.Definition
 import Text.Pandoc.Logging (LogMessage(..))
+import Data.List (intersperse)
 
 -- | Convert Pandoc to TiddlyWiki.
 writeTiddlyWiki:: PandocMonad m => WriterOptions -> Pandoc -> m Text
@@ -40,6 +41,11 @@ writeBlock (Para inlines) = (<> "\n\n") <$> writeInlines inlines
 writeBlock (Header level _ inlines) =
     header <$> writeInlines inlines
     where header v = mconcat ["\n", T.pack (repeatString level "!"), " ", v, "\n"]
+
+-- https://tiddlywiki.com/#Hard%20Linebreaks%20in%20WikiText
+writeBlock (LineBlock iss) =
+    fmap (surround "\"\"\"\n") . body $ iss
+    where body = fmap (mconcat . (intersperse "\n")) . mapM writeInlines
 
 -- TODO(jkz): Handle all cases.
 writeBlock b = T.empty <$ report (BlockNotRendered b)
