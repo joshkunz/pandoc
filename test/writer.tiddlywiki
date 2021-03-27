@@ -55,8 +55,24 @@ And a following paragraph.
 ! Code Blocks
 Code:
 
+
+```
+---- (should be four hyphens)
+
+sub status {
+    print "working";
+}
+
+this code block is indented by one tab
+```
 And:
 
+
+```
+    this code block is indented by two tabs
+
+These should not be escaped:  \$ \\ \> \[ \{
+```
 ---
 
 ! Lists
@@ -135,8 +151,18 @@ Interpreted markdown in a table:
 
 This should be a code block, though:
 
+
+```
+<div>
+    foo
+</div>
+```
 As should this:
 
+
+```
+<div>foo</div>
+```
 Now, nested:
 
 This should just be an HTML comment:
@@ -150,10 +176,18 @@ Blah
     This is another comment.
 -->Code block:
 
+
+```
+<!-- Comment -->
+```
 Just plain comment, with trailing spaces on the line:
 
 <!-- foo -->Code:
 
+
+```
+<hr />
+```
 Hr’s:
 
 <hr><hr /><hr /><hr><hr /><hr /><hr class="foo" id="bar" /><hr class="foo" id="bar" /><hr class="foo" id="bar">---
@@ -298,6 +332,10 @@ Indented [[thrice|/url]].
 
 This should [not][] be a link.
 
+
+```
+[not]: /url
+```
 Foo [[bar|/url/]].
 
 Foo [[biz|/url/]].
@@ -320,6 +358,10 @@ An e-mail address: [[nobody@nowhere.net|mailto:nobody@nowhere.net]]
 
 Auto-links should not occur here: `<http://example.com/>`
 
+
+```
+or here: <http://example.com/>
+```
 ---
 
 ! Images
