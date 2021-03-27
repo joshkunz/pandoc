@@ -13,6 +13,9 @@ import Text.Pandoc.Logging (LogMessage(..))
 writeTiddlyWiki:: PandocMonad m => WriterOptions -> Pandoc -> m Text
 writeTiddlyWiki _ (Pandoc _ blocks) = writeBlocks blocks
 
+repeatString :: Int -> String -> String
+repeatString n = mconcat . replicate n
+
 writeBlocks :: PandocMonad m => [Block] -> m Text
 writeBlocks blocks = (fmap mconcat) . mapM writeBlock $ blocks
 
@@ -31,6 +34,12 @@ writeBlock b@(RawBlock _ _) = T.empty <$ report (BlockNotRendered b)
 
 writeBlock (Plain inlines) = writeInlines inlines
 writeBlock (Para inlines) = (<> "\n\n") <$> writeInlines inlines
+
+-- https://tiddlywiki.com/#Headings%20in%20WikiText
+-- TODO(jkz): Support Attrs
+writeBlock (Header level _ inlines) =
+    header <$> writeInlines inlines
+    where header v = T.pack (repeatString level "!") <> " " <> v <> "\n\n"
 
 -- TODO(jkz): Handle all cases.
 writeBlock _ = return T.empty

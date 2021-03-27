@@ -2,12 +2,32 @@ This is a set of tests for pandoc. Most of them are adapted from John Gruber’s
 
 
 ---
+! Headers 
+
+!! Level 2 with an 
+
+!!! Level 3 with 
+
+!!!! Level 4 
+
+!!!!! Level 5 
+
+! Level 1 
+
+!! Level 2 with 
+
+!!! Level 3 
+
 with no blank line 
+
+!! Level 2 
 
 with no blank line 
 
 
 ---
+! Paragraphs 
+
 Here’s a regular paragraph. 
 
 In Markdown 1.0.0 and earlier. Version 8. This line turns into a list item. Because a hard-wrapped line in the middle of a paragraph looked like a list item. 
@@ -18,6 +38,8 @@ There should be a hard line break here.
 
 
 ---
+! Block Quotes 
+
 E-mail style: 
 
 This should not be a block quote: 2 > 1. 
@@ -26,12 +48,18 @@ And a following paragraph.
 
 
 ---
+! Code Blocks 
+
 Code: 
 
 And: 
 
 
 ---
+! Lists 
+
+!! Unordered 
+
 Asterisks tight: 
 
 Asterisks loose: 
@@ -44,6 +72,8 @@ Minuses tight:
 
 Minuses loose: 
 
+!! Ordered 
+
 Tight: 
 
 and: 
@@ -54,9 +84,15 @@ and using spaces:
 
 Multiple paragraphs: 
 
+!! Nested 
+
 Here’s another: 
 
 Same thing but with paragraphs: 
+
+!! Tabs and spaces 
+
+!! Fancy list markers 
 
 Nesting: 
 
@@ -70,6 +106,8 @@ B. Williams
 
 
 ---
+! Definition Lists 
+
 Tight using spaces: 
 
 Tight using tabs: 
@@ -83,6 +121,8 @@ Multiple definitions, tight:
 Multiple definitions, loose: 
 
 Blank line after term, indented marker, alternate markers: 
+
+! HTML Blocks 
 
 Simple block on one line: 
 
@@ -117,6 +157,8 @@ Hr’s:
 
 <hr><hr /><hr /><hr><hr /><hr /><hr class="foo" id="bar" /><hr class="foo" id="bar" /><hr class="foo" id="bar">
 ---
+! Inline Markup 
+
 This is , and so . 
 
 This is , and so . 
@@ -143,6 +185,8 @@ These should not be superscripts or subscripts, because of the unescaped spaces:
 
 
 ---
+! Smart quotes, ellipses, dashes 
+
 said the spider. 
 
 , , and are letters. 
@@ -161,12 +205,16 @@ Ellipses…and…and….
 
 
 ---
+! LaTeX 
+
 These shouldn’t be math: 
 
 Here’s a LaTeX table: 
 
 
 ---
+! Special Characters 
+
 Here is some unicode: 
 
 AT&T has an ampersand in their name. 
@@ -213,6 +261,10 @@ Minus: -
 
 
 ---
+! Links 
+
+!! Explicit 
+
 Just a . 
 
 . 
@@ -230,6 +282,8 @@ Just a .
 
 
 . 
+
+!! Reference 
 
 Foo . 
 
@@ -249,6 +303,8 @@ Foo .
 
 Foo . 
 
+!! With ampersands 
+
 Here’s a . 
 
 Here’s a link with an amersand in the link text: . 
@@ -256,6 +312,8 @@ Here’s a link with an amersand in the link text: .
 Here’s an . 
 
 Here’s an . 
+
+!! Autolinks 
 
 With an ampersand: 
 
@@ -265,6 +323,8 @@ Auto-links should not occur here:
 
 
 ---
+! Images 
+
 From by Georges Melies (1902): 
 
 
@@ -273,6 +333,8 @@ Here is a movie icon.
 
 
 ---
+! Footnotes 
+
 Here is a footnote reference, and another. This should be a footnote reference, because it contains a space.[^my note] Here is an inline note. 
 
 This paragraph should not be part of the note, as it is not indented. 
