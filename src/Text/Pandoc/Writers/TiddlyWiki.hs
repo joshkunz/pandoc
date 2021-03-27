@@ -44,6 +44,9 @@ writeBlock (Header level _ inlines) =
 -- TODO(jkz): Handle all cases.
 writeBlock b = T.empty <$ report (BlockNotRendered b)
 
+surround :: Text -> Text -> Text
+surround with on = with <> on <> with
+
 writeInlines :: PandocMonad m => [Inline] -> m Text
 writeInlines inlines =
     (fmap mconcat) . mapM writeInline $ inlines
@@ -60,6 +63,13 @@ writeInline (RawInline f t)
     | f == Format "html" = return t
     | f == Format "tiddlywiki" = return t
 writeInline i@(RawInline _ _) = T.empty <$ report (InlineNotRendered i)
+
+writeInline (Emph is) = surround "//" <$> writeInlines is
+writeInline (Underline is) = surround "__" <$> writeInlines is
+writeInline (Strong is) = surround "''" <$> writeInlines is
+writeInline (Strikeout is) = surround "~~" <$> writeInlines is
+writeInline (Superscript is) = surround "^^" <$> writeInlines is
+writeInline (Subscript is) = surround ",," <$> writeInlines is
 
 -- TODO(jkz): Handle all inlines.
 writeInline i = T.empty <$ report (InlineNotRendered i)
