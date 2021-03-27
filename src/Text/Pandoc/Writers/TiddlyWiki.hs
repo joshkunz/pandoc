@@ -17,6 +17,19 @@ writeTiddlyWiki _ (Pandoc _ blocks) = writeBlocks blocks
 repeatString :: Int -> String -> String
 repeatString n = mconcat . replicate n
 
+-- | Wrap the given text `on` with the string `with`.
+surround :: Text -> Text -> Text
+surround with on = with <> on <> with
+
+-- | Wrap the given text `on` with the string `with` with newlines
+-- | before and after.
+surroundBlock :: Text -> Text -> Text
+surroundBlock with on = surroundBlock2 with with on
+
+-- | Wrap the given text `on` with `begin` and `end`.
+surroundBlock2 :: Text -> Text -> Text -> Text
+surroundBlock2 begin end on = begin <> "\n" <> on <> "\n" <> end
+
 isBlockQuote :: Block -> Bool
 isBlockQuote (BlockQuote _) = True
 isBlockQuote _ = False
@@ -27,44 +40,45 @@ isTextBlock (Para _) = True
 isTextBlock _ = False
 
 writeBlocks :: PandocMonad m => [Block] -> m Text
-writeBlocks blocks = (fmap mconcat) . mapM writeBlock $ blocks
+writeBlocks blocks =
+    joinTexts <$> mapM writeBlock blocks
+    where joinTexts = mconcat . (intersperse "\n\n") . filter (not . T.null)
 
 writeBlock :: PandocMonad m => Block -> m Text
 
 writeBlock Null = return T.empty
 
 -- https://tiddlywiki.com/#Horizontal%20Rules%20in%20WikiText
-writeBlock HorizontalRule = return "---\n"
+writeBlock HorizontalRule = return "---"
 
 -- https://tiddlywiki.com/#HTML%20in%20WikiText
 writeBlock (RawBlock f text)
-    | f == Format "html" = return $ text <> "\n"
-    | f == Format "tiddlywiki" = return $ text <> "\n"
+    | f == Format "html" = return text
+    | f == Format "tiddlywiki" = return text
 writeBlock b@(RawBlock _ _) = T.empty <$ report (BlockNotRendered b)
 
 writeBlock (Plain inlines) = writeInlines inlines
-writeBlock (Para inlines) = (<> "\n\n") <$> writeInlines inlines
+writeBlock (Para inlines) = writeInlines inlines
 
 -- https://tiddlywiki.com/#Headings%20in%20WikiText
 -- TODO(jkz): Support Attrs
 writeBlock (Header level _ inlines) =
     header <$> writeInlines inlines
-    where header v = mconcat ["\n", T.pack (repeatString level "!"), " ", v, "\n"]
+    where header v = T.pack (repeatString level "!") <> " " <> v
 
 -- https://tiddlywiki.com/#Hard%20Linebreaks%20in%20WikiText
 writeBlock (LineBlock iss) =
-    fmap (surround "\n\"\"\"\n") . body $ iss
+    fmap (surroundBlock "\"\"\"") . body $ iss
     where body = fmap (mconcat . (intersperse "\n")) . mapM writeInlines
 
 -- TODO(jkz): Actually handle attrs.
-writeBlock (CodeBlock _ text) = return . surround "\n```\n" $ text
+writeBlock (CodeBlock _ text) = return . surroundBlock "```" $ text
 
 writeBlock b@(BlockQuote bs)
     -- TODO(jkz): Support nested block quotes.
     | any isBlockQuote bs = T.empty <$ report (BlockNotRendered b)
     | otherwise           =
-        wrapQuote <$> writeBlocks bs
-        where wrapQuote t = "\n>>>\n" <> t <> "<<<\n"
+        surroundBlock2 ">>>" "<<<" <$> writeBlocks bs
 
 writeBlock b@(BulletList bss) =
     case mapM extractBlock bss of
@@ -73,18 +87,19 @@ writeBlock b@(BulletList bss) =
         -- TODO(jkz): Support nested bullet lists. This catches nested bullet
         --            lists currently
         Nothing -> T.empty <$ report (BlockNotRendered b)
-        Just bs -> (<> "\n\n") <$> listOf bs
+        Just bs -> fmap (mconcat . (intersperse (T.pack "\n")) . map ("* " <>)) . mapM writeBlock $ bs
     where extractBlock [block]
               | isTextBlock block = Just block
               | otherwise     = Nothing
           extractBlock _ = Nothing
-          listOf = fmap (mconcat . (intersperse (T.pack "\n")) . map ("* " <>)) . mapM writeBlock
 
 -- TODO(jkz): Handle all cases.
 writeBlock b = T.empty <$ report (BlockNotRendered b)
 
-surround :: Text -> Text -> Text
-surround with on = with <> on <> with
+isNormalText :: Inline -> Bool
+isNormalText (Str _) = True
+isNormalText Space = True
+isNormalText _ = False
 
 writeInlines :: PandocMonad m => [Inline] -> m Text
 writeInlines inlines =

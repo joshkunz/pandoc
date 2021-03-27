@@ -18,15 +18,17 @@ John Gruber’s markdown test suite.
 !! Level 2 with //emphasis//
 
 !!! Level 3
+
 with no blank line
 
-
 !! Level 2
+
 with no blank line
 
 ---
 
 ! Paragraphs
+
 Here’s a regular paragraph.
 
 In Markdown 1.0.0 and earlier. Version
@@ -43,14 +45,14 @@ There should be a hard line breakhere.
 ---
 
 ! Block Quotes
-E-mail style:
 
+E-mail style:
 
 >>>
 This is a block quote.
 It is pretty short.
-
 <<<
+
 This should not be a block quote: 2
 > 1.
 
@@ -59,8 +61,8 @@ And a following paragraph.
 ---
 
 ! Code Blocks
-Code:
 
+Code:
 
 ```
 ---- (should be four hyphens)
@@ -71,19 +73,21 @@ sub status {
 
 this code block is indented by one tab
 ```
-And:
 
+And:
 
 ```
     this code block is indented by two tabs
 
 These should not be escaped:  \$ \\ \> \[ \{
 ```
+
 ---
 
 ! Lists
 
 !! Unordered
+
 Asterisks tight:
 
 * asterisk 1
@@ -93,14 +97,8 @@ Asterisks tight:
 Asterisks loose:
 
 * asterisk 1
-
-
 * asterisk 2
-
-
 * asterisk 3
-
-
 
 Pluses tight:
 
@@ -111,14 +109,8 @@ Pluses tight:
 Pluses loose:
 
 * Plus 1
-
-
 * Plus 2
-
-
 * Plus 3
-
-
 
 Minuses tight:
 
@@ -129,17 +121,11 @@ Minuses tight:
 Minuses loose:
 
 * Minus 1
-
-
 * Minus 2
-
-
 * Minus 3
 
-
-
-
 !! Ordered
+
 Tight:
 
 and:
@@ -150,16 +136,16 @@ and using spaces:
 
 Multiple paragraphs:
 
-
 !! Nested
+
 Here’s another:
 
 Same thing but with paragraphs:
 
-
 !! Tabs and spaces
 
 !! Fancy list markers
+
 Nesting:
 
 Autonumbering:
@@ -173,6 +159,7 @@ B. Williams
 ---
 
 ! Definition Lists
+
 Tight using spaces:
 
 Tight using tabs:
@@ -187,8 +174,8 @@ Multiple definitions, loose:
 
 Blank line after term, indented marker, alternate markers:
 
-
 ! HTML Blocks
+
 Simple block on one line:
 
 And nested without indentation:
@@ -196,73 +183,100 @@ And nested without indentation:
 Interpreted markdown in a table:
 
 <table>
+
 <tr>
+
 <td>
-This is //emphasized//</td>
+
+This is //emphasized//
+
+</td>
+
 <td>
-And this is ''strong''</td>
+
+And this is ''strong''
+
+</td>
+
 </tr>
+
 </table>
+
 <script type="text/javascript">document.write('This *should not* be interpreted as markdown');</script>
+
 Here’s a simple block:
 
 This should be a code block, though:
-
 
 ```
 <div>
     foo
 </div>
 ```
-As should this:
 
+As should this:
 
 ```
 <div>foo</div>
 ```
+
 Now, nested:
 
 This should just be an HTML comment:
 
 <!-- Comment -->
+
 Multiline:
 
 <!--
 Blah
 Blah
 -->
+
 <!--
     This is another comment.
 -->
-Code block:
 
+Code block:
 
 ```
 <!-- Comment -->
 ```
+
 Just plain comment, with trailing spaces on the line:
 
 <!-- foo -->
-Code:
 
+Code:
 
 ```
 <hr />
 ```
+
 Hr’s:
 
 <hr>
+
 <hr />
+
 <hr />
+
 <hr>
+
 <hr />
+
 <hr />
+
 <hr class="foo" id="bar" />
+
 <hr class="foo" id="bar" />
+
 <hr class="foo" id="bar">
+
 ---
 
 ! Inline Markup
+
 This is //emphasized//, and so //is this//.
 
 This is ''strong'', and so ''is this''.
@@ -291,6 +305,7 @@ because of the unescaped spaces: a^b c^d, a~b c~d.
 ---
 
 ! Smart quotes, ellipses, dashes
+
  said the spider. 
 
 , , and  are letters.
@@ -312,6 +327,7 @@ Ellipses…and…and….
 ---
 
 ! LaTeX
+
 * 
 * 
 * 
@@ -335,6 +351,7 @@ Here’s a LaTeX table:
 ---
 
 ! Special Characters
+
 Here is some unicode:
 
 * I hat: Î
@@ -390,6 +407,7 @@ Minus: -
 ! Links
 
 !! Explicit
+
 Just a [[URL|/url/]].
 
 [[URL and title|/url/]].
@@ -408,8 +426,8 @@ Just a [[URL|/url/]].
 
 [[Empty|]].
 
-
 !! Reference
+
 Foo [[bar|/url/]].
 
 With [[embedded [brackets]|/url/]].
@@ -424,16 +442,16 @@ Indented [[thrice|/url]].
 
 This should [not][] be a link.
 
-
 ```
 [not]: /url
 ```
+
 Foo [[bar|/url/]].
 
 Foo [[biz|/url/]].
 
-
 !! With ampersands
+
 Here’s a [[link with an ampersand in the URL|http://example.com/?foo=1&bar=2]].
 
 Here’s a link with an amersand in the link text: [[AT&T|http://att.com/]].
@@ -442,8 +460,8 @@ Here’s an [[inline link|/script?foo=1&bar=2]].
 
 Here’s an [[inline link in pointy braces|/script?foo=1&bar=2]].
 
-
 !! Autolinks
+
 With an ampersand: [[http://example.com/?foo=1&bar=2|http://example.com/?foo=1&bar=2]]
 
 * In a list?
@@ -452,37 +470,34 @@ With an ampersand: [[http://example.com/?foo=1&bar=2|http://example.com/?foo=1&b
 
 An e-mail address: [[nobody@nowhere.net|mailto:nobody@nowhere.net]]
 
-
 >>>
 Blockquoted: [[http://example.com/|http://example.com/]]
-
 <<<
-Auto-links should not occur here: `<http://example.com/>`
 
+Auto-links should not occur here: `<http://example.com/>`
 
 ```
 or here: <http://example.com/>
 ```
+
 ---
 
 ! Images
+
 From  by Georges Melies (1902):
-
-
 
 Here is a movie  icon.
 
 ---
 
 ! Footnotes
+
 Here is a footnote reference, and another.
 This should //not// be a footnote reference, because it
 contains a space.[^my note] Here is an inline note.
 
-
 >>>
 Notes can go in quotes.
-
 <<<
-This paragraph should not be part of the note, as it is not indented.
 
+This paragraph should not be part of the note, as it is not indented.
