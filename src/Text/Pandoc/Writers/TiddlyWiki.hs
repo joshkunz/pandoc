@@ -71,5 +71,10 @@ writeInline (Strikeout is) = surround "~~" <$> writeInlines is
 writeInline (Superscript is) = surround "^^" <$> writeInlines is
 writeInline (Subscript is) = surround ",," <$> writeInlines is
 
+writeInline (Code _ code)
+    -- Use double-quotes if the code contains a backtick.
+    | '`' `elem` (T.unpack code) = return $ surround "``" code
+    | otherwise                  = return $ surround "`" code
+
 -- TODO(jkz): Handle all inlines.
 writeInline i = T.empty <$ report (InlineNotRendered i)
