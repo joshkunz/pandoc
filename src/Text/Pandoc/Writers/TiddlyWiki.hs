@@ -85,5 +85,8 @@ writeInline (Link _ is (url, _)) =
           a body = "<a href=" <> (surround "\"" url) <> ">" <> body <> "</a>"
           wiki body = "[[" <> body <> "|" <> url <> "]]"
 
+-- TODO(jkz): Support attrs via an HTML wrapper.
+writeInline (Span _ is) = writeInlines is
+
 -- TODO(jkz): Handle all inlines.
 writeInline i = T.empty <$ report (InlineNotRendered i)
