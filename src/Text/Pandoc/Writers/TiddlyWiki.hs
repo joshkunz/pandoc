@@ -55,5 +55,11 @@ writeInline SoftBreak = return "\n"
 
 writeInline (Str t) = return t
 
+-- HTML is rendered direclty inline https://tiddlywiki.com/#HTML%20in%20WikiText
+writeInline (RawInline f t)
+    | f == Format "html" = return t
+    | f == Format "tiddlywiki" = return t
+writeInline i@(RawInline _ _) = T.empty <$ report (InlineNotRendered i)
+
 -- TODO(jkz): Handle all inlines.
 writeInline i = T.empty <$ report (InlineNotRendered i)
