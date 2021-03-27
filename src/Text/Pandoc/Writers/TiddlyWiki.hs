@@ -44,8 +44,11 @@ writeBlock (Header level _ inlines) =
 
 -- https://tiddlywiki.com/#Hard%20Linebreaks%20in%20WikiText
 writeBlock (LineBlock iss) =
-    fmap (surround "\"\"\"\n") . body $ iss
+    fmap (surround "\n\"\"\"\n") . body $ iss
     where body = fmap (mconcat . (intersperse "\n")) . mapM writeInlines
+
+-- TODO(jkz): Actually handle attrs.
+writeBlock (CodeBlock _ text) = return . surround "\n```\n" $ text
 
 -- TODO(jkz): Handle all cases.
 writeBlock b = T.empty <$ report (BlockNotRendered b)
