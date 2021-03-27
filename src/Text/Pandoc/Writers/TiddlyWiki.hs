@@ -21,6 +21,11 @@ isBlockQuote :: Block -> Bool
 isBlockQuote (BlockQuote _) = True
 isBlockQuote _ = False
 
+isTextBlock :: Block -> Bool
+isTextBlock (Plain _) = True
+isTextBlock (Para _) = True
+isTextBlock _ = False
+
 writeBlocks :: PandocMonad m => [Block] -> m Text
 writeBlocks blocks = (fmap mconcat) . mapM writeBlock $ blocks
 
@@ -60,6 +65,20 @@ writeBlock b@(BlockQuote bs)
     | otherwise           =
         wrapQuote <$> writeBlocks bs
         where wrapQuote t = "\n>>>\n" <> t <> "<<<\n"
+
+writeBlock b@(BulletList bss) =
+    case mapM extractBlock bss of
+        -- TiddlyWiki only supports inline elements in bulleted lists. Fail if
+        -- we're asked to add a bullet with more than one block.
+        -- TODO(jkz): Support nested bullet lists. This catches nested bullet
+        --            lists currently
+        Nothing -> T.empty <$ report (BlockNotRendered b)
+        Just bs -> (<> "\n\n") <$> listOf bs
+    where extractBlock [block]
+              | isTextBlock block = Just block
+              | otherwise     = Nothing
+          extractBlock _ = Nothing
+          listOf = fmap (mconcat . (intersperse (T.pack "\n")) . map ("* " <>)) . mapM writeBlock
 
 -- TODO(jkz): Handle all cases.
 writeBlock b = T.empty <$ report (BlockNotRendered b)
