@@ -7,7 +7,7 @@ John Gruber’s markdown test suite.
 
 !! Level 2 with an 
 
-!!! Level 3 with 
+!!! Level 3 with //emphasis//
 
 !!!! Level 4
 
@@ -15,7 +15,7 @@ John Gruber’s markdown test suite.
 
 ! Level 1
 
-!! Level 2 with 
+!! Level 2 with //emphasis//
 
 !!! Level 3
 with no blank line
@@ -131,7 +131,7 @@ And nested without indentation:
 
 Interpreted markdown in a table:
 
-<table><tr><td>This is </td><td>And this is </td></tr></table><script type="text/javascript">document.write('This *should not* be interpreted as markdown');</script>Here’s a simple block:
+<table><tr><td>This is //emphasized//</td><td>And this is ''strong''</td></tr></table><script type="text/javascript">document.write('This *should not* be interpreted as markdown');</script>Here’s a simple block:
 
 This should be a code block, though:
 
@@ -159,27 +159,27 @@ Hr’s:
 <hr><hr /><hr /><hr><hr /><hr /><hr class="foo" id="bar" /><hr class="foo" id="bar" /><hr class="foo" id="bar">---
 
 ! Inline Markup
-This is , and so .
+This is //emphasized//, and so //is this//.
 
-This is , and so .
+This is ''strong'', and so ''is this''.
 
-An .
+An ////.
 
+''//This is strong and em.//''
 
+So is ''//this//'' word.
 
-So is  word.
+''//This is strong and em.//''
 
-
-
-So is  word.
+So is ''//this//'' word.
 
 This is code: , , , , .
 
+~~This is //strikeout//.~~
 
+Superscripts: a^^bc^^d a^^//hello//^^ a^^hello there^^.
 
-Superscripts: ad a a.
-
-Subscripts: HO, HO, HO.
+Subscripts: H,,2,,O, H,,23,,O, H,,many of them,,O.
 
 These should not be superscripts or subscripts,
 because of the unescaped spaces: a^b c^d, a~b c~d.
@@ -333,7 +333,7 @@ Here is a movie  icon.
 
 ! Footnotes
 Here is a footnote reference, and another.
-This should  be a footnote reference, because it
+This should //not// be a footnote reference, because it
 contains a space.[^my note] Here is an inline note.
 
 This paragraph should not be part of the note, as it is not indented.
