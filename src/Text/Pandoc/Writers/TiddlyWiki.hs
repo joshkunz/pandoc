@@ -76,5 +76,14 @@ writeInline (Code _ code)
     | '`' `elem` (T.unpack code) = return $ surround "``" code
     | otherwise                  = return $ surround "`" code
 
+-- TODO(jkz): Support attrs for links (since we can add them to <a>)
+writeInline (Link _ is (url, _)) =
+    -- Use <a> if there is non-trivial formatting in the body text.
+    if all isNormalText is then wiki <$> inlineText
+                           else a <$> inlineText
+    where inlineText = writeInlines is
+          a body = "<a href=" <> (surround "\"" url) <> ">" <> body <> "</a>"
+          wiki body = "[[" <> body <> "|" <> url <> "]]"
+
 -- TODO(jkz): Handle all inlines.
 writeInline i = T.empty <$ report (InlineNotRendered i)
