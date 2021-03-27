@@ -24,7 +24,7 @@ writeBlock :: PandocMonad m => Block -> m Text
 writeBlock Null = return T.empty
 
 -- https://tiddlywiki.com/#Horizontal%20Rules%20in%20WikiText
-writeBlock HorizontalRule = return "\n---\n"
+writeBlock HorizontalRule = return "---\n"
 
 -- https://tiddlywiki.com/#HTML%20in%20WikiText
 writeBlock (RawBlock f text)
@@ -39,17 +39,19 @@ writeBlock (Para inlines) = (<> "\n\n") <$> writeInlines inlines
 -- TODO(jkz): Support Attrs
 writeBlock (Header level _ inlines) =
     header <$> writeInlines inlines
-    where header v = T.pack (repeatString level "!") <> " " <> v <> "\n\n"
+    where header v = mconcat ["\n", T.pack (repeatString level "!"), " ", v, "\n"]
 
 -- TODO(jkz): Handle all cases.
 writeBlock _ = return T.empty
 
 writeInlines :: PandocMonad m => [Inline] -> m Text
 writeInlines inlines =
-    (fmap mconcat) . mapM ((fmap endInline) . writeInline) $ inlines
-    where endInline i = if T.null i then i else i <> " "
+    (fmap mconcat) . mapM writeInline $ inlines
 
 writeInline :: PandocMonad m => Inline -> m Text
+
+writeInline Space = return " "
+writeInline SoftBreak = return "\n"
 
 writeInline (Str t) = return t
 

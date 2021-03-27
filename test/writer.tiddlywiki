@@ -1,277 +1,276 @@
-This is a set of tests for pandoc. Most of them are adapted from John Gruber’s markdown test suite. 
-
+This is a set of tests for pandoc. Most of them are adapted from
+John Gruber’s markdown test suite.
 
 ---
-! Headers 
+
+! Headers
 
 !! Level 2 with an 
 
 !!! Level 3 with 
 
-!!!! Level 4 
+!!!! Level 4
 
-!!!!! Level 5 
+!!!!! Level 5
 
-! Level 1 
+! Level 1
 
 !! Level 2 with 
 
-!!! Level 3 
+!!! Level 3
+with no blank line
 
-with no blank line 
 
-!! Level 2 
-
-with no blank line 
-
+!! Level 2
+with no blank line
 
 ---
-! Paragraphs 
 
-Here’s a regular paragraph. 
+! Paragraphs
+Here’s a regular paragraph.
 
-In Markdown 1.0.0 and earlier. Version 8. This line turns into a list item. Because a hard-wrapped line in the middle of a paragraph looked like a list item. 
+In Markdown 1.0.0 and earlier. Version
+8. This line turns into a list item.
+Because a hard-wrapped line in the
+middle of a paragraph looked like a
+list item.
 
-Here’s one with a bullet. * criminey. 
+Here’s one with a bullet.
+* criminey.
 
-There should be a hard line break here. 
-
-
----
-! Block Quotes 
-
-E-mail style: 
-
-This should not be a block quote: 2 > 1. 
-
-And a following paragraph. 
-
+There should be a hard line breakhere.
 
 ---
-! Code Blocks 
 
-Code: 
+! Block Quotes
+E-mail style:
 
-And: 
+This should not be a block quote: 2
+> 1.
 
-
----
-! Lists 
-
-!! Unordered 
-
-Asterisks tight: 
-
-Asterisks loose: 
-
-Pluses tight: 
-
-Pluses loose: 
-
-Minuses tight: 
-
-Minuses loose: 
-
-!! Ordered 
-
-Tight: 
-
-and: 
-
-Loose using tabs: 
-
-and using spaces: 
-
-Multiple paragraphs: 
-
-!! Nested 
-
-Here’s another: 
-
-Same thing but with paragraphs: 
-
-!! Tabs and spaces 
-
-!! Fancy list markers 
-
-Nesting: 
-
-Autonumbering: 
-
-Should not be a list item: 
-
-M.A. 2007 
-
-B. Williams 
-
+And a following paragraph.
 
 ---
-! Definition Lists 
 
-Tight using spaces: 
+! Code Blocks
+Code:
 
-Tight using tabs: 
+And:
 
-Loose: 
+---
 
-Multiple blocks with italics: 
+! Lists
 
-Multiple definitions, tight: 
+!! Unordered
+Asterisks tight:
 
-Multiple definitions, loose: 
+Asterisks loose:
 
-Blank line after term, indented marker, alternate markers: 
+Pluses tight:
 
-! HTML Blocks 
+Pluses loose:
 
-Simple block on one line: 
+Minuses tight:
 
-And nested without indentation: 
+Minuses loose:
 
-Interpreted markdown in a table: 
 
-<table><tr><td>This is </td><td>And this is </td></tr></table><script type="text/javascript">document.write('This *should not* be interpreted as markdown');</script>Here’s a simple block: 
+!! Ordered
+Tight:
 
-This should be a code block, though: 
+and:
 
-As should this: 
+Loose using tabs:
 
-Now, nested: 
+and using spaces:
 
-This should just be an HTML comment: 
+Multiple paragraphs:
 
-<!-- Comment -->Multiline: 
+
+!! Nested
+Here’s another:
+
+Same thing but with paragraphs:
+
+
+!! Tabs and spaces
+
+!! Fancy list markers
+Nesting:
+
+Autonumbering:
+
+Should not be a list item:
+
+M.A. 2007
+
+B. Williams
+
+---
+
+! Definition Lists
+Tight using spaces:
+
+Tight using tabs:
+
+Loose:
+
+Multiple blocks with italics:
+
+Multiple definitions, tight:
+
+Multiple definitions, loose:
+
+Blank line after term, indented marker, alternate markers:
+
+
+! HTML Blocks
+Simple block on one line:
+
+And nested without indentation:
+
+Interpreted markdown in a table:
+
+<table><tr><td>This is </td><td>And this is </td></tr></table><script type="text/javascript">document.write('This *should not* be interpreted as markdown');</script>Here’s a simple block:
+
+This should be a code block, though:
+
+As should this:
+
+Now, nested:
+
+This should just be an HTML comment:
+
+<!-- Comment -->Multiline:
 
 <!--
 Blah
 Blah
 --><!--
     This is another comment.
--->Code block: 
+-->Code block:
 
-Just plain comment, with trailing spaces on the line: 
+Just plain comment, with trailing spaces on the line:
 
-<!-- foo -->Code: 
+<!-- foo -->Code:
 
-Hr’s: 
+Hr’s:
 
-<hr><hr /><hr /><hr><hr /><hr /><hr class="foo" id="bar" /><hr class="foo" id="bar" /><hr class="foo" id="bar">
----
-! Inline Markup 
+<hr><hr /><hr /><hr><hr /><hr /><hr class="foo" id="bar" /><hr class="foo" id="bar" /><hr class="foo" id="bar">---
 
-This is , and so . 
+! Inline Markup
+This is , and so .
 
-This is , and so . 
+This is , and so .
 
-An . 
-
-
-
-So is word. 
+An .
 
 
 
-So is word. 
-
-This is code: , , , , . 
+So is  word.
 
 
 
-Superscripts: a d a a . 
+So is  word.
 
-Subscripts: H O, H O, H O. 
-
-These should not be superscripts or subscripts, because of the unescaped spaces: a^b c^d, a~b c~d. 
+This is code: , , , , .
 
 
----
-! Smart quotes, ellipses, dashes 
 
-said the spider. 
+Superscripts: ad a a.
 
-, , and are letters. 
+Subscripts: HO, HO, HO.
 
-and are names of trees. So is 
-
-Were you alive in the 70’s? 
-
-Here is some quoted and a . 
-
-Some dashes: one—two — three—four — five. 
-
-Dashes between numbers: 5–7, 255–66, 1987–1999. 
-
-Ellipses…and…and…. 
-
+These should not be superscripts or subscripts,
+because of the unescaped spaces: a^b c^d, a~b c~d.
 
 ---
-! LaTeX 
 
-These shouldn’t be math: 
+! Smart quotes, ellipses, dashes
+ said the spider. 
 
-Here’s a LaTeX table: 
+, , and  are letters.
 
+  and  are names of trees.
+So is 
 
----
-! Special Characters 
+ Were you alive in the
+70’s?
 
-Here is some unicode: 
+Here is some quoted  and a .
 
-AT&T has an ampersand in their name. 
+Some dashes: one—two — three—four — five.
 
-AT&T is another way to write it. 
+Dashes between numbers: 5–7, 255–66, 1987–1999.
 
-This & that. 
-
-4 < 5. 
-
-6 > 5. 
-
-Backslash: \ 
-
-Backtick: ` 
-
-Asterisk: * 
-
-Underscore: _ 
-
-Left brace: { 
-
-Right brace: } 
-
-Left bracket: [ 
-
-Right bracket: ] 
-
-Left paren: ( 
-
-Right paren: ) 
-
-Greater-than: > 
-
-Hash: # 
-
-Period: . 
-
-Bang: ! 
-
-Plus: + 
-
-Minus: - 
-
+Ellipses…and…and….
 
 ---
-! Links 
 
-!! Explicit 
+! LaTeX
+These shouldn’t be math:
 
-Just a . 
+Here’s a LaTeX table:
 
-. 
+---
 
-. 
+! Special Characters
+Here is some unicode:
 
-. 
+AT&T has an ampersand in their name.
+
+AT&T is another way to write it.
+
+This & that.
+
+4 < 5.
+
+6 > 5.
+
+Backslash: \
+
+Backtick: `
+
+Asterisk: *
+
+Underscore: _
+
+Left brace: {
+
+Right brace: }
+
+Left bracket: [
+
+Right bracket: ]
+
+Left paren: (
+
+Right paren: )
+
+Greater-than: >
+
+Hash: #
+
+Period: .
+
+Bang: !
+
+Plus: +
+
+Minus: -
+
+---
+
+! Links
+
+!! Explicit
+Just a .
+
+.
+
+.
+
+.
 
 
 
@@ -281,61 +280,61 @@ Just a .
 
 
 
-. 
+.
 
-!! Reference 
 
-Foo . 
+!! Reference
+Foo .
 
-With . 
+With .
 
-by itself should be a link. 
+ by itself should be a link.
 
-Indented . 
+Indented .
 
-Indented . 
+Indented .
 
-Indented . 
+Indented .
 
-This should [not][] be a link. 
+This should [not][] be a link.
 
-Foo . 
+Foo .
 
-Foo . 
+Foo .
 
-!! With ampersands 
 
-Here’s a . 
+!! With ampersands
+Here’s a .
 
-Here’s a link with an amersand in the link text: . 
+Here’s a link with an amersand in the link text: .
 
-Here’s an . 
+Here’s an .
 
-Here’s an . 
+Here’s an .
 
-!! Autolinks 
 
+!! Autolinks
 With an ampersand: 
 
 An e-mail address: 
 
 Auto-links should not occur here: 
 
+---
+
+! Images
+From  by Georges Melies (1902):
+
+
+
+Here is a movie  icon.
 
 ---
-! Images 
 
-From by Georges Melies (1902): 
+! Footnotes
+Here is a footnote reference, and another.
+This should  be a footnote reference, because it
+contains a space.[^my note] Here is an inline note.
 
-
-
-Here is a movie icon. 
-
-
----
-! Footnotes 
-
-Here is a footnote reference, and another. This should be a footnote reference, because it contains a space.[^my note] Here is an inline note. 
-
-This paragraph should not be part of the note, as it is not indented. 
+This paragraph should not be part of the note, as it is not indented.
 
