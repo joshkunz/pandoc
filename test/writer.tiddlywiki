@@ -5,7 +5,7 @@ John Gruber’s markdown test suite.
 
 ! Headers
 
-!! Level 2 with an 
+!! Level 2 with an [[embedded link|/url]]
 
 !!! Level 3 with //emphasis//
 
@@ -163,7 +163,7 @@ This is //emphasized//, and so //is this//.
 
 This is ''strong'', and so ''is this''.
 
-An ////.
+An //[[emphasized link|/url]]//.
 
 ''//This is strong and em.//''
 
@@ -264,59 +264,59 @@ Minus: -
 ! Links
 
 !! Explicit
-Just a .
+Just a [[URL|/url/]].
 
-.
+[[URL and title|/url/]].
 
-.
+[[URL and title|/url/]].
 
-.
+[[URL and title|/url/]].
 
+[[URL and title|/url/]]
 
+[[URL and title|/url/]]
 
+[[with_underscore|/url/with_underscore]]
 
+[[Email link|mailto:nobody@nowhere.net]]
 
-
-
-
-
-.
+[[Empty|]].
 
 
 !! Reference
-Foo .
+Foo [[bar|/url/]].
 
-With .
+With [[embedded [brackets]|/url/]].
 
- by itself should be a link.
+[[b|/url/]] by itself should be a link.
 
-Indented .
+Indented [[once|/url]].
 
-Indented .
+Indented [[twice|/url]].
 
-Indented .
+Indented [[thrice|/url]].
 
 This should [not][] be a link.
 
-Foo .
+Foo [[bar|/url/]].
 
-Foo .
+Foo [[biz|/url/]].
 
 
 !! With ampersands
-Here’s a .
+Here’s a [[link with an ampersand in the URL|http://example.com/?foo=1&bar=2]].
 
-Here’s a link with an amersand in the link text: .
+Here’s a link with an amersand in the link text: [[AT&T|http://att.com/]].
 
-Here’s an .
+Here’s an [[inline link|/script?foo=1&bar=2]].
 
-Here’s an .
+Here’s an [[inline link in pointy braces|/script?foo=1&bar=2]].
 
 
 !! Autolinks
-With an ampersand: 
+With an ampersand: [[http://example.com/?foo=1&bar=2|http://example.com/?foo=1&bar=2]]
 
-An e-mail address: 
+An e-mail address: [[nobody@nowhere.net|mailto:nobody@nowhere.net]]
 
 Auto-links should not occur here: `<http://example.com/>`
 
