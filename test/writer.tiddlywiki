@@ -53,6 +53,30 @@ This is a block quote.
 It is pretty short.
 <<<
 
+<<<
+Code in a block quote:
+
+```
+sub status {
+    print "working";
+}
+```
+
+A list:
+
+# item one
+# item two
+
+
+Nested block quotes:
+
+> nested
+
+
+> nested
+
+<<<
+
 This should not be a block quote: 2
 > 1.
 
