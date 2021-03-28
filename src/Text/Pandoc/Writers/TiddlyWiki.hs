@@ -14,8 +14,11 @@ import Data.List (intersperse)
 writeTiddlyWiki:: PandocMonad m => WriterOptions -> Pandoc -> m Text
 writeTiddlyWiki _ (Pandoc _ blocks) = writeBlocks blocks
 
-repeatString :: Int -> String -> String
-repeatString n = mconcat . replicate n
+mrepeated :: (Monoid m) => Int -> m -> m
+mrepeated n = mconcat . replicate n
+
+mjoin :: (Monoid m) => m -> [m] -> m
+mjoin sep = mconcat . (intersperse sep)
 
 -- | Wrap the given text `on` with the string `with`.
 surround :: Text -> Text -> Text
@@ -29,6 +32,13 @@ surroundBlock with on = surroundBlock2 with with on
 -- | Wrap the given text `on` with `begin` and `end`.
 surroundBlock2 :: Text -> Text -> Text -> Text
 surroundBlock2 begin end on = begin <> "\n" <> on <> "\n" <> end
+
+-- Blocks/linebreaks can be used in single-line contexts when wrapped in a
+-- div with an extra newline. The TiddlyWiki docs mention this when discussing
+-- list items, but it also works for definition lists.
+-- https://tiddlywiki.com/#Lists%20in%20WikiText
+wrapLinebreaks :: Text -> Text
+wrapLinebreaks = surroundBlock2 "<div>\n" "</div>"
 
 isBlockQuote :: Block -> Bool
 isBlockQuote (BlockQuote _) = True
@@ -92,19 +102,14 @@ writeListItem styles [(BulletList bss)] =
     writeNestedList styles $ TiddlyList Bullet bss
 writeListItem styles [(OrderedList _ bss)] =
     writeNestedList styles $ TiddlyList Numbered bss
--- Blocks in lists are just normal items, but surrounded by a special "<div>",
--- with an additional opening newline.
--- https://tiddlywiki.com/#Lists%20in%20WikiText
 writeListItem styles bs =
     wrap <$> writeBlocks bs
-    where wrap x = T.pack (show styles) <> " " <> surroundBlock2 "<div>\n" "</div>" x
+    where wrap x = T.pack (show styles) <> " " <> wrapLinebreaks x
 
 writeBlocks :: PandocMonad m => [Block] -> m Text
 writeBlocks =
     (fmap joinBlocks) . mapM writeBlock
-    where joinBlocks = mconcat
-                      . (intersperse "\n\n")
-                      . filter (not . T.null)
+    where joinBlocks = mjoin "\n\n" . filter (not . T.null)
 
 writeBlock :: PandocMonad m => Block -> m Text
 
@@ -126,12 +131,12 @@ writeBlock (Para inlines) = writeInlines inlines
 -- TODO(jkz): Support Attrs
 writeBlock (Header level _ inlines) =
     header <$> writeInlines inlines
-    where header v = T.pack (repeatString level "!") <> " " <> v
+    where header v = mrepeated level "!" <> " " <> v
 
 -- https://tiddlywiki.com/#Hard%20Linebreaks%20in%20WikiText
 writeBlock (LineBlock iss) =
     fmap (surroundBlock "\"\"\"") . body $ iss
-    where body = fmap (mconcat . (intersperse "\n")) . mapM writeInlines
+    where body = fmap (mjoin "\n") . mapM writeInlines
 
 -- TODO(jkz): Actually handle attrs.
 writeBlock (CodeBlock _ text) = return . surroundBlock "```" $ text
@@ -139,13 +144,27 @@ writeBlock (CodeBlock _ text) = return . surroundBlock "```" $ text
 writeBlock b@(BlockQuote bs)
     -- TODO(jkz): Support nested block quotes.
     | any isBlockQuote bs = T.empty <$ report (BlockNotRendered b)
-    | otherwise           =
-        surroundBlock2 ">>>" "<<<" <$> writeBlocks bs
+    | otherwise           = surroundBlock "<<<" <$> writeBlocks bs
 
 writeBlock (BulletList bss) = writeList $ TiddlyList Bullet bss
 -- TODO(jkz): Figure out if TiddlyWiki can support anything besides
 -- numbered lists.
 writeBlock (OrderedList _ bss) = writeList $ TiddlyList Numbered bss
+
+-- Contrary to Pandoc terminology, TiddlyWiki does not consider definitions
+-- to really be lists at all, so they don't use the same/similar syntax.
+writeBlock (DefinitionList terms) =
+    mconcat . (intersperse "\n") <$> mapM writeItem terms
+    where writeItem (is, bss) =
+            do term <- writeTerm is
+               definitions <- writeDefinitions bss
+               return $ "; " <> term <> "\n" <> definitions
+          writeTerm is
+            | not $ any isBreak is = writeInlines is
+            | otherwise            = wrapLinebreaks <$> writeInlines is
+          writeDefinition [b] | isSingleLine b = writeBlock b
+          writeDefinition bs = wrapLinebreaks <$> writeBlocks bs
+          writeDefinitions = fmap (mjoin "\n" . map (": " <>)) . mapM writeDefinition
 
 -- TODO(jkz): Handle all cases.
 writeBlock b = T.empty <$ report (BlockNotRendered b)

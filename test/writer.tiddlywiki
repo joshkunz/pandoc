@@ -48,7 +48,7 @@ There should be a hard line breakhere.
 
 E-mail style:
 
->>>
+<<<
 This is a block quote.
 It is pretty short.
 <<<
@@ -319,17 +319,87 @@ B. Williams
 
 Tight using spaces:
 
+; apple
+: red fruit
+; orange
+: orange fruit
+; banana
+: yellow fruit
+
 Tight using tabs:
+
+; apple
+: red fruit
+; orange
+: orange fruit
+; banana
+: yellow fruit
 
 Loose:
 
+; apple
+: red fruit
+; orange
+: orange fruit
+; banana
+: yellow fruit
+
 Multiple blocks with italics:
+
+; //apple//
+: <div>
+
+red fruit
+
+contains seeds,
+crisp, pleasant to taste
+</div>
+; //orange//
+: <div>
+
+orange fruit
+
+```
+{ orange code block }
+```
+
+<<<
+orange block quote
+<<<
+</div>
 
 Multiple definitions, tight:
 
+; apple
+: red fruit
+: computer
+; orange
+: orange fruit
+: bank
+
 Multiple definitions, loose:
 
+; apple
+: red fruit
+: computer
+; orange
+: orange fruit
+: bank
+
 Blank line after term, indented marker, alternate markers:
+
+; apple
+: red fruit
+: computer
+; orange
+: <div>
+
+orange fruit
+
+# sublist
+# sublist
+
+</div>
 
 ! HTML Blocks
 
@@ -637,7 +707,7 @@ With an ampersand: [[http://example.com/?foo=1&bar=2|http://example.com/?foo=1&b
 
 An e-mail address: [[nobody@nowhere.net|mailto:nobody@nowhere.net]]
 
->>>
+<<<
 Blockquoted: [[http://example.com/|http://example.com/]]
 <<<
 
@@ -663,7 +733,7 @@ Here is a footnote reference, and another.
 This should //not// be a footnote reference, because it
 contains a space.[^my note] Here is an inline note.
 
->>>
+<<<
 Notes can go in quotes.
 <<<
 
