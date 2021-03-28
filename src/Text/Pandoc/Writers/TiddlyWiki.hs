@@ -58,31 +58,46 @@ instance Show ListStyle where
     show Bullet = "*"
     show Numbered = "#"
 
-showStyles :: [ListStyle] -> String
-showStyles = mconcat . fmap show
+newtype ListStyles = ListStyles [ListStyle]
 
-writeListItem :: PandocMonad m => [ListStyle] -> [Block] -> m Text
+instance Show ListStyles where
+    show (ListStyles styles) = mconcat . fmap show $ styles
+
+instance Semigroup ListStyles where
+    (<>) (ListStyles a) (ListStyles b) = ListStyles (a ++ b)
+
+instance Monoid ListStyles where
+    mempty = ListStyles []
+
+andStyle :: ListStyles -> ListStyle -> ListStyles
+andStyle (ListStyles styles) style = ListStyles $ styles ++ [style]
+
+data TiddlyList = TiddlyList ListStyle [[Block]]
+
+writeList :: PandocMonad m => TiddlyList -> m Text
+writeList = writeNestedList mempty
+
+writeNestedList :: PandocMonad m => ListStyles -> TiddlyList -> m Text
+writeNestedList styles (TiddlyList style bss) =
+    mconcat . map (<> "\n") <$> mapM writeItem bss
+    where writeItem = writeListItem (styles `andStyle` style)
+
+writeListItem :: PandocMonad m => ListStyles -> [Block] -> m Text
 writeListItem _ [] = return mempty
 -- Single lines can be formatted using the simple syntax.
 writeListItem styles [b] | isSingleLine b =
     prependStyle <$> writeBlock b
-    where prependStyle onto = T.pack (showStyles styles) <> " " <> onto
--- Bulleted list's introducers need to be packed together, without spaces,
--- so render nested lists with another style.
+    where prependStyle onto = T.pack (show styles) <> " " <> onto
 writeListItem styles [(BulletList bss)] =
-    mconcat . map (<> "\n") <$> mapM (writeListItem (styles `andStyle` Bullet)) bss
-    where andStyle y x = (y ++ [x])
+    writeNestedList styles $ TiddlyList Bullet bss
+writeListItem styles [(OrderedList _ bss)] =
+    writeNestedList styles $ TiddlyList Numbered bss
 -- Blocks in lists are just normal items, but surrounded by a special "<div>",
 -- with an additional opening newline.
 -- https://tiddlywiki.com/#Lists%20in%20WikiText
 writeListItem styles bs =
     wrap <$> writeBlocks bs
-    where wrap x = T.pack (showStyles styles) <> " " <> surroundBlock2 "<div>\n" "</div>" x
-
-data TiddlyList = TiddlyList ListStyle Block
-
-writeList :: PandocMonad m => TiddlyList -> m Text
-writeList (TiddlyList _ b) = writeListItem [] [b]
+    where wrap x = T.pack (show styles) <> " " <> surroundBlock2 "<div>\n" "</div>" x
 
 writeBlocks :: PandocMonad m => [Block] -> m Text
 writeBlocks =
@@ -127,7 +142,10 @@ writeBlock b@(BlockQuote bs)
     | otherwise           =
         surroundBlock2 ">>>" "<<<" <$> writeBlocks bs
 
-writeBlock b@(BulletList _) = writeList $ TiddlyList Bullet b
+writeBlock (BulletList bss) = writeList $ TiddlyList Bullet bss
+-- TODO(jkz): Figure out if TiddlyWiki can support anything besides
+-- numbered lists.
+writeBlock (OrderedList _ bss) = writeList $ TiddlyList Numbered bss
 
 -- TODO(jkz): Handle all cases.
 writeBlock b = T.empty <$ report (BlockNotRendered b)
