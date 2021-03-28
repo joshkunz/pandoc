@@ -52,10 +52,44 @@ isSingleLine =
 indent :: Text -> Text -> Text
 indent prefix = T.unlines . map (prefix <>) . T.lines
 
+data ListStyle = Bullet | Numbered
+
+instance Show ListStyle where
+    show Bullet = "*"
+    show Numbered = "#"
+
+showStyles :: [ListStyle] -> String
+showStyles = mconcat . fmap show
+
+writeListItem :: PandocMonad m => [ListStyle] -> [Block] -> m Text
+writeListItem _ [] = return mempty
+-- Single lines can be formatted using the simple syntax.
+writeListItem styles [b] | isSingleLine b =
+    prependStyle <$> writeBlock b
+    where prependStyle onto = T.pack (showStyles styles) <> " " <> onto
+-- Bulleted list's introducers need to be packed together, without spaces,
+-- so render nested lists with another style.
+writeListItem styles [(BulletList bss)] =
+    mconcat . map (<> "\n") <$> mapM (writeListItem (styles `andStyle` Bullet)) bss
+    where andStyle y x = (y ++ [x])
+-- Blocks in lists are just normal items, but surrounded by a special "<div>",
+-- with an additional opening newline.
+-- https://tiddlywiki.com/#Lists%20in%20WikiText
+writeListItem styles bs =
+    wrap <$> writeBlocks bs
+    where wrap x = T.pack (showStyles styles) <> " " <> surroundBlock2 "<div>\n" "</div>" x
+
+data TiddlyList = TiddlyList ListStyle Block
+
+writeList :: PandocMonad m => TiddlyList -> m Text
+writeList (TiddlyList _ b) = writeListItem [] [b]
+
 writeBlocks :: PandocMonad m => [Block] -> m Text
-writeBlocks blocks =
-    joinTexts <$> mapM writeBlock blocks
-    where joinTexts = mconcat . (intersperse "\n\n") . filter (not . T.null)
+writeBlocks =
+    (fmap joinBlocks) . mapM writeBlock
+    where joinBlocks = mconcat
+                      . (intersperse "\n\n")
+                      . filter (not . T.null)
 
 writeBlock :: PandocMonad m => Block -> m Text
 
@@ -93,18 +127,7 @@ writeBlock b@(BlockQuote bs)
     | otherwise           =
         surroundBlock2 ">>>" "<<<" <$> writeBlocks bs
 
-writeBlock b@(BulletList bss) =
-    case mapM extract . concat $ bss of
-        -- TiddlyWiki only supports inline elements and other lists in bulleted
-        -- lists. Fail if we're asked to add a bullet with more than one block.
-        Nothing -> T.empty <$ report (BlockNotRendered b)
-        Just bs -> fmap (mconcat . (intersperse (T.pack "\n"))) . mapM writeBlockWithStar $ bs
-    where extract block@(BulletList _) = Just block
-          extract block | isSingleLine block = Just block
-          extract _ = Nothing
-          writeBlockWithStar block@(BulletList _) =
-              indent "*" <$> writeBlock block
-          writeBlockWithStar block = ("* " <>) <$> writeBlock block
+writeBlock b@(BulletList _) = writeList $ TiddlyList Bullet b
 
 -- TODO(jkz): Handle all cases.
 writeBlock b = T.empty <$ report (BlockNotRendered b)
