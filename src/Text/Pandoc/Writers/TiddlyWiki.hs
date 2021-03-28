@@ -124,25 +124,8 @@ writeBlocks =
 
 writeBlock :: PandocMonad m => Block -> TiddlyWiki m Text
 
-writeBlock Null = return T.empty
-
--- https://tiddlywiki.com/#Horizontal%20Rules%20in%20WikiText
-writeBlock HorizontalRule = return "---"
-
--- https://tiddlywiki.com/#HTML%20in%20WikiText
-writeBlock (RawBlock f text)
-    | f == Format "html" = return text
-    | f == Format "tiddlywiki" = return text
-writeBlock b@(RawBlock _ _) = T.empty <$ report (BlockNotRendered b)
-
 writeBlock (Plain inlines) = writeInlines inlines
 writeBlock (Para inlines) = writeInlines inlines
-
--- https://tiddlywiki.com/#Headings%20in%20WikiText
--- TODO(jkz): Support Attrs
-writeBlock (Header level _ inlines) =
-    header <$> writeInlines inlines
-    where header v = mrepeated level "!" <> " " <> v
 
 -- https://tiddlywiki.com/#Hard%20Linebreaks%20in%20WikiText
 writeBlock (LineBlock iss) =
@@ -152,19 +135,26 @@ writeBlock (LineBlock iss) =
 -- TODO(jkz): Actually handle attrs.
 writeBlock (CodeBlock _ text) = return . surroundBlock "```" $ text
 
+-- https://tiddlywiki.com/#HTML%20in%20WikiText
+writeBlock (RawBlock f text)
+    | f == Format "html" = return text
+    | f == Format "tiddlywiki" = return text
+writeBlock b@(RawBlock _ _) = T.empty <$ report (BlockNotRendered b)
+
 writeBlock (BlockQuote bs) =
     do
         inQuote <- asks inBlockQuote
         if inQuote then indent "> " <$> writeBlocks bs
                    else surroundBlock "<<<" <$> local enterBlockQuote (writeBlocks bs)
 
-writeBlock (BulletList bss) = writeList $ TiddlyList Bullet bss
 -- TODO(jkz): Figure out if TiddlyWiki can support anything besides
 -- numbered lists.
 writeBlock (OrderedList _ bss) = writeList $ TiddlyList Numbered bss
 
+writeBlock (BulletList bss) = writeList $ TiddlyList Bullet bss
+
 -- Contrary to Pandoc terminology, TiddlyWiki does not consider definitions
--- to really be lists at all, so they don't use the same/similar syntax.
+-- to really be lists at all, so they use a totally different syntax.
 writeBlock (DefinitionList terms) =
     mconcat . (intersperse "\n") <$> mapM writeItem terms
     where writeItem (is, bss) =
@@ -178,8 +168,22 @@ writeBlock (DefinitionList terms) =
           writeDefinition bs = wrapLinebreaks <$> writeBlocks bs
           writeDefinitions = fmap (mjoin "\n" . map (": " <>)) . mapM writeDefinition
 
--- TODO(jkz): Handle all cases.
-writeBlock b = T.empty <$ report (BlockNotRendered b)
+-- https://tiddlywiki.com/#Headings%20in%20WikiText
+-- TODO(jkz): Support Attrs
+writeBlock (Header level _ inlines) =
+    header <$> writeInlines inlines
+    where header v = mrepeated level "!" <> " " <> v
+
+-- https://tiddlywiki.com/#Horizontal%20Rules%20in%20WikiText
+writeBlock HorizontalRule = return "---"
+
+-- TODO(jkz): Implement tables.
+writeBlock b@(Table{}) = T.empty <$ report (BlockNotRendered b)
+
+-- TODO(jkz): Implement divs.
+writeBlock b@(Div _ _) = T.empty <$ report (BlockNotRendered b)
+
+writeBlock Null = return T.empty
 
 isNormalText :: Inline -> Bool
 isNormalText (Str _) = True
@@ -192,16 +196,7 @@ writeInlines inlines =
 
 writeInline :: PandocMonad m => Inline -> m Text
 
-writeInline Space = return " "
-writeInline SoftBreak = return "\n"
-
 writeInline (Str t) = return t
-
--- HTML is rendered direclty inline https://tiddlywiki.com/#HTML%20in%20WikiText
-writeInline (RawInline f t)
-    | f == Format "html" = return t
-    | f == Format "tiddlywiki" = return t
-writeInline i@(RawInline _ _) = T.empty <$ report (InlineNotRendered i)
 
 writeInline (Emph is) = surround "//" <$> writeInlines is
 writeInline (Underline is) = surround "__" <$> writeInlines is
@@ -210,10 +205,35 @@ writeInline (Strikeout is) = surround "~~" <$> writeInlines is
 writeInline (Superscript is) = surround "^^" <$> writeInlines is
 writeInline (Subscript is) = surround ",," <$> writeInlines is
 
+-- TODO(jkz): Support Small Caps.
+writeInline i@SmallCaps{} = T.empty <$ report (InlineNotRendered i)
+
+-- TODO(jkz): Support Quoted.
+writeInline i@Quoted{} = T.empty <$ report (InlineNotRendered i)
+
+-- TODO(jkz): Support Cite.
+writeInline i@Cite{} = T.empty <$ report (InlineNotRendered i)
+
 writeInline (Code _ code)
     -- Use double-quotes if the code contains a backtick.
     | '`' `elem` (T.unpack code) = return $ surround "``" code
     | otherwise                  = return $ surround "`" code
+
+
+writeInline Space = return " "
+writeInline SoftBreak = return "\n"
+
+-- TODO(jkz): Support LineBreak.
+writeInline i@LineBreak = T.empty <$ report (InlineNotRendered i)
+
+-- TODO(jkz): Support Math.
+writeInline i@Math{} = T.empty <$ report (InlineNotRendered i)
+
+-- HTML is rendered direclty inline https://tiddlywiki.com/#HTML%20in%20WikiText
+writeInline (RawInline f t)
+    | f == Format "html" = return t
+    | f == Format "tiddlywiki" = return t
+writeInline i@(RawInline _ _) = T.empty <$ report (InlineNotRendered i)
 
 -- TODO(jkz): Support attrs for links (since we can add them to <a>)
 writeInline (Link _ is (url, _)) =
@@ -224,8 +244,11 @@ writeInline (Link _ is (url, _)) =
           a body = "<a href=" <> (surround "\"" url) <> ">" <> body <> "</a>"
           wiki body = "[[" <> body <> "|" <> url <> "]]"
 
+-- TODO(jkz): Support Image.
+writeInline i@Image{} = T.empty <$ report (InlineNotRendered i)
+
+-- TODO(jkz): Support Note.
+writeInline i@Note{} = T.empty <$ report (InlineNotRendered i)
+
 -- TODO(jkz): Support attrs via an HTML wrapper.
 writeInline (Span _ is) = writeInlines is
-
--- TODO(jkz): Handle all inlines.
-writeInline i = T.empty <$ report (InlineNotRendered i)
