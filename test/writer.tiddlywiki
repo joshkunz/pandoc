@@ -138,6 +138,11 @@ Multiple paragraphs:
 
 !! Nested
 
+* Tab
+** Tab
+*** Tab
+
+
 Here’s another:
 
 Same thing but with paragraphs:
@@ -328,23 +333,7 @@ Ellipses…and…and….
 
 ! LaTeX
 
-* 
-* 
-* 
-* 
-* 
-* -Tree
-* Here’s some display math:
-
-* Here’s one that has a line break in it: .
-
 These shouldn’t be math:
-
-* To get the famous equation, write `$e = mc^2$`.
-* $22,000 is a //lot// of money. So is $34,000.
-(It worked if  is emphasized.)
-* Shoes ($20) and socks ($5).
-* Escaped `$`: $73 //this should be emphasized// 23$.
 
 Here’s a LaTeX table:
 

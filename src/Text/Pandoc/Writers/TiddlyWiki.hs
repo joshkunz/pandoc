@@ -34,10 +34,23 @@ isBlockQuote :: Block -> Bool
 isBlockQuote (BlockQuote _) = True
 isBlockQuote _ = False
 
-isTextBlock :: Block -> Bool
-isTextBlock (Plain _) = True
-isTextBlock (Para _) = True
-isTextBlock _ = False
+isBreak :: Inline -> Bool
+isBreak SoftBreak = True
+isBreak LineBreak = True
+isBreak _ = False
+
+-- | Evaluates if the given block consists of a single line. Only single-line
+-- | blocks (and other list blocks) are legal list elements.
+isSingleLine :: Block -> Bool
+isSingleLine =
+    maybe False (not . any isBreak) . inlines
+    where inlines (Plain is) = Just is
+          inlines (Para is) = Just is
+          inlines _ = Nothing
+
+-- | Add the given prefix to the beginning of each line in the given text.
+indent :: Text -> Text -> Text
+indent prefix = T.unlines . map (prefix <>) . T.lines
 
 writeBlocks :: PandocMonad m => [Block] -> m Text
 writeBlocks blocks =
@@ -81,17 +94,17 @@ writeBlock b@(BlockQuote bs)
         surroundBlock2 ">>>" "<<<" <$> writeBlocks bs
 
 writeBlock b@(BulletList bss) =
-    case mapM extractBlock bss of
-        -- TiddlyWiki only supports inline elements in bulleted lists. Fail if
-        -- we're asked to add a bullet with more than one block.
-        -- TODO(jkz): Support nested bullet lists. This catches nested bullet
-        --            lists currently
+    case mapM extract . concat $ bss of
+        -- TiddlyWiki only supports inline elements and other lists in bulleted
+        -- lists. Fail if we're asked to add a bullet with more than one block.
         Nothing -> T.empty <$ report (BlockNotRendered b)
-        Just bs -> fmap (mconcat . (intersperse (T.pack "\n")) . map ("* " <>)) . mapM writeBlock $ bs
-    where extractBlock [block]
-              | isTextBlock block = Just block
-              | otherwise     = Nothing
-          extractBlock _ = Nothing
+        Just bs -> fmap (mconcat . (intersperse (T.pack "\n"))) . mapM writeBlockWithStar $ bs
+    where extract block@(BulletList _) = Just block
+          extract block | isSingleLine block = Just block
+          extract _ = Nothing
+          writeBlockWithStar block@(BulletList _) =
+              indent "*" <$> writeBlock block
+          writeBlockWithStar block = ("* " <>) <$> writeBlock block
 
 -- TODO(jkz): Handle all cases.
 writeBlock b = T.empty <$ report (BlockNotRendered b)
