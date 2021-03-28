@@ -9,10 +9,26 @@ import Text.Pandoc.Options (WriterOptions)
 import Text.Pandoc.Definition
 import Text.Pandoc.Logging (LogMessage(..))
 import Data.List (intersperse)
+import Control.Monad.Reader (ReaderT(runReaderT), local, asks)
+import Data.Default (Default(..))
+
+newtype Environment = Environment { inBlockQuote :: Bool }
+
+enterBlockQuote :: Environment -> Environment
+enterBlockQuote e = e { inBlockQuote = True }
+
+instance Default Environment where
+    def = Environment { inBlockQuote = False }
+
+type TiddlyWiki m = ReaderT Environment m
+
+runTiddlyWiki :: (PandocMonad m) => TiddlyWiki m a -> m a
+runTiddlyWiki r = runReaderT r def
 
 -- | Convert Pandoc to TiddlyWiki.
 writeTiddlyWiki:: PandocMonad m => WriterOptions -> Pandoc -> m Text
-writeTiddlyWiki _ (Pandoc _ blocks) = writeBlocks blocks
+writeTiddlyWiki _ (Pandoc _ blocks) =
+    runTiddlyWiki $ writeBlocks blocks
 
 mrepeated :: (Monoid m) => Int -> m -> m
 mrepeated n = mconcat . replicate n
@@ -79,15 +95,15 @@ instance Monoid ListStyle where
 
 data TiddlyList = TiddlyList ListStyle [[Block]]
 
-writeList :: PandocMonad m => TiddlyList -> m Text
+writeList :: PandocMonad m => TiddlyList -> TiddlyWiki m Text
 writeList = writeNestedList mempty
 
-writeNestedList :: PandocMonad m => ListStyle -> TiddlyList -> m Text
+writeNestedList :: PandocMonad m => ListStyle -> TiddlyList -> TiddlyWiki m Text
 writeNestedList styles (TiddlyList style bss) =
     mconcat . map (<> "\n") <$> mapM writeItem bss
     where writeItem = writeListItem (styles <> style)
 
-writeListItem :: PandocMonad m => ListStyle -> [Block] -> m Text
+writeListItem :: PandocMonad m => ListStyle -> [Block] -> TiddlyWiki m Text
 writeListItem _ [] = return mempty
 -- Single lines can be formatted using the simple syntax.
 writeListItem styles [b] | isSingleLine b =
@@ -101,12 +117,12 @@ writeListItem styles bs =
     wrap <$> writeBlocks bs
     where wrap x = T.pack (show styles) <> " " <> wrapLinebreaks x
 
-writeBlocks :: PandocMonad m => [Block] -> m Text
+writeBlocks :: PandocMonad m => [Block] -> TiddlyWiki m Text
 writeBlocks =
     (fmap joinBlocks) . mapM writeBlock
     where joinBlocks = mjoin "\n\n" . filter (not . T.null)
 
-writeBlock :: PandocMonad m => Block -> m Text
+writeBlock :: PandocMonad m => Block -> TiddlyWiki m Text
 
 writeBlock Null = return T.empty
 
@@ -136,10 +152,11 @@ writeBlock (LineBlock iss) =
 -- TODO(jkz): Actually handle attrs.
 writeBlock (CodeBlock _ text) = return . surroundBlock "```" $ text
 
-writeBlock b@(BlockQuote bs)
-    -- TODO(jkz): Support nested block quotes.
-    | any isBlockQuote bs = T.empty <$ report (BlockNotRendered b)
-    | otherwise           = surroundBlock "<<<" <$> writeBlocks bs
+writeBlock (BlockQuote bs) =
+    do
+        inQuote <- asks inBlockQuote
+        if inQuote then indent "> " <$> writeBlocks bs
+                   else surroundBlock "<<<" <$> local enterBlockQuote (writeBlocks bs)
 
 writeBlock (BulletList bss) = writeList $ TiddlyList Bullet bss
 -- TODO(jkz): Figure out if TiddlyWiki can support anything besides
