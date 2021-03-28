@@ -4,6 +4,7 @@ module Text.Pandoc.Writers.TiddlyWiki ( writeTiddlyWiki ) where
 
 import Data.Text (Text)
 import qualified Data.Text as T
+import qualified Data.Text.Lazy as L
 import Text.Pandoc.Class.PandocMonad (PandocMonad, report)
 import Text.Pandoc.Options (WriterOptions)
 import Text.Pandoc.Definition
@@ -11,6 +12,12 @@ import Text.Pandoc.Logging (LogMessage(..))
 import Data.List (intersperse)
 import Control.Monad.Reader (ReaderT(runReaderT), local, asks)
 import Data.Default (Default(..))
+import Text.Blaze.Html5 ((!))
+import qualified Text.Blaze.Html5 as H
+import qualified Text.Blaze.Html5.Attributes as A
+import Text.Blaze.Html.Renderer.Text
+import Data.Maybe (catMaybes)
+import Data.String (IsString(..))
 
 newtype Environment = Environment { inBlockQuote :: Bool }
 
@@ -190,6 +197,25 @@ isNormalText (Str _) = True
 isNormalText Space = True
 isNormalText _ = False
 
+-- | Convert a Pandoc Attr into a Blaze Attribute that can be added to an
+-- | Html element.
+toAttribute :: Attr -> H.Attribute
+toAttribute (identifier, classes, kvs) =
+    mconcat . (++ extraAttributes) . catMaybes $ [ idAttribute
+                                                 , classAttribute ]
+    where idAttribute =
+            if (not . T.null) identifier
+                then Just . A.id . H.textValue $ identifier
+                else Nothing
+          classAttribute =
+              case classes of
+                  [] -> Nothing
+                  cs -> Just . A.class_ . H.textValue . (mjoin "\n") $ cs
+          extraAttribute (k, v) =
+              H.customAttribute (tag k) (H.textValue v)
+              where tag = fromString . T.unpack
+          extraAttributes = map extraAttribute kvs
+
 writeInlines :: PandocMonad m => [Inline] -> m Text
 writeInlines inlines =
     (fmap mconcat) . mapM writeInline $ inlines
@@ -219,7 +245,6 @@ writeInline (Code _ code)
     | '`' `elem` (T.unpack code) = return $ surround "``" code
     | otherwise                  = return $ surround "`" code
 
-
 writeInline Space = return " "
 writeInline SoftBreak = return "\n"
 
@@ -235,13 +260,17 @@ writeInline (RawInline f t)
     | f == Format "tiddlywiki" = return t
 writeInline i@(RawInline _ _) = T.empty <$ report (InlineNotRendered i)
 
--- TODO(jkz): Support attrs for links (since we can add them to <a>)
-writeInline (Link _ is (url, _)) =
-    -- Use <a> if there is non-trivial formatting in the body text.
-    if all isNormalText is then wiki <$> inlineText
-                           else a <$> inlineText
+writeInline (Link attr is (url, _)) =
+    -- Use <a> if there is non-trivial formatting in the body text, or we
+    -- want to add link attributes.
+    if all isNormalText is && nullAttr == attr
+        -- TODO(jkz): For wiki links, remove the | part if body == url
+        then wiki <$> inlineText
+        else wrapHtml <$> inlineText
     where inlineText = writeInlines is
-          a body = "<a href=" <> (surround "\"" url) <> ">" <> body <> "</a>"
+          wrapA = (H.a ! A.href (H.textValue url) ! toAttribute attr)
+                  . H.preEscapedToHtml
+          wrapHtml = L.toStrict . renderHtml . wrapA
           wiki body = "[[" <> body <> "|" <> url <> "]]"
 
 -- TODO(jkz): Support Image.

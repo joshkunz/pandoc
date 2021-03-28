@@ -722,17 +722,17 @@ Here’s an [[inline link in pointy braces|/script?foo=1&bar=2]].
 
 !! Autolinks
 
-With an ampersand: [[http://example.com/?foo=1&bar=2|http://example.com/?foo=1&bar=2]]
+With an ampersand: <a href="http://example.com/?foo=1&amp;bar=2" class="uri">http://example.com/?foo=1&bar=2</a>
 
 * In a list?
-* [[http://example.com/|http://example.com/]]
+* <a href="http://example.com/" class="uri">http://example.com/</a>
 * It should.
 
 
-An e-mail address: [[nobody@nowhere.net|mailto:nobody@nowhere.net]]
+An e-mail address: <a href="mailto:nobody@nowhere.net" class="email">nobody@nowhere.net</a>
 
 <<<
-Blockquoted: [[http://example.com/|http://example.com/]]
+Blockquoted: <a href="http://example.com/" class="uri">http://example.com/</a>
 <<<
 
 Auto-links should not occur here: `<http://example.com/>`
