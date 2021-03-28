@@ -62,37 +62,32 @@ isSingleLine =
 indent :: Text -> Text -> Text
 indent prefix = T.unlines . map (prefix <>) . T.lines
 
-data ListStyle = Bullet | Numbered
+data ListStyle = NoStyle | Bullet | Numbered | Nested ListStyle ListStyle
 
 instance Show ListStyle where
+    show NoStyle = ""
     show Bullet = "*"
     show Numbered = "#"
+    show (Nested first rest) = show rest <> show first
 
-newtype ListStyles = ListStyles [ListStyle]
+instance Semigroup ListStyle where
+    -- The outermost nesting is always the first elem, so flip the argument.
+    (<>) = flip Nested
 
-instance Show ListStyles where
-    show (ListStyles styles) = mconcat . fmap show $ styles
-
-instance Semigroup ListStyles where
-    (<>) (ListStyles a) (ListStyles b) = ListStyles (a ++ b)
-
-instance Monoid ListStyles where
-    mempty = ListStyles []
-
-andStyle :: ListStyles -> ListStyle -> ListStyles
-andStyle (ListStyles styles) style = ListStyles $ styles ++ [style]
+instance Monoid ListStyle where
+    mempty = NoStyle
 
 data TiddlyList = TiddlyList ListStyle [[Block]]
 
 writeList :: PandocMonad m => TiddlyList -> m Text
 writeList = writeNestedList mempty
 
-writeNestedList :: PandocMonad m => ListStyles -> TiddlyList -> m Text
+writeNestedList :: PandocMonad m => ListStyle -> TiddlyList -> m Text
 writeNestedList styles (TiddlyList style bss) =
     mconcat . map (<> "\n") <$> mapM writeItem bss
-    where writeItem = writeListItem (styles `andStyle` style)
+    where writeItem = writeListItem (styles <> style)
 
-writeListItem :: PandocMonad m => ListStyles -> [Block] -> m Text
+writeListItem :: PandocMonad m => ListStyle -> [Block] -> m Text
 writeListItem _ [] = return mempty
 -- Single lines can be formatted using the simple syntax.
 writeListItem styles [b] | isSingleLine b =
