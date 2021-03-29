@@ -17,7 +17,7 @@ import qualified Text.Blaze.Html5.Attributes as A
 import Text.Blaze.Html.Renderer.Text
 import Data.Maybe (catMaybes)
 import Data.String (IsString(..))
-import Data.Char (isSpace)
+import Data.Char (isSpace, ord)
 import qualified Text.TeXMath as TeX
 import Text.Pandoc.Writers.Math (convertMath)
 import Text.XML.Light.Output (ppElement, showElement)
@@ -25,6 +25,7 @@ import Text.XML.Light.Output (ppElement, showElement)
 data Environment =
     Environment { inBlockQuote :: Bool
                 , inLineBreakBlock :: Bool
+                , inHtml :: Bool
                 , writerOptions :: WriterOptions
                 }
 
@@ -34,6 +35,9 @@ enterBlockQuote e = e { inBlockQuote = True }
 enterLineBreakBlock :: Environment -> Environment
 enterLineBreakBlock e = e { inLineBreakBlock = True }
 
+enterHtml :: Environment -> Environment
+enterHtml e = e { inHtml = True }
+
 type TiddlyWiki m = ReaderT Environment m
 
 runTiddlyWiki :: (PandocMonad m) => WriterOptions -> TiddlyWiki m a -> m a
@@ -41,6 +45,7 @@ runTiddlyWiki o r =
     runReaderT r initial
     where initial = Environment { inBlockQuote = False
                                 , inLineBreakBlock = False
+                                , inHtml = False
                                 , writerOptions = o
                                 }
 
@@ -70,6 +75,18 @@ surroundBlock with on = surroundBlock2 with with on
 -- | Wrap the given text `on` with `begin` and `end`.
 surroundBlock2 :: Text -> Text -> Text -> Text
 surroundBlock2 begin end on = begin <> "\n" <> on <> "\n" <> end
+
+-- | Escape common WikiText formatting in `Str` elements.
+escape :: Text -> Text
+escape = escape' "`"
+       . escape' "//"
+       . escape' "^^"
+       . escape' "''"
+       . escape' ",,"
+       . escape' "~~"
+    where escape' t =
+            T.replace t ((T.pack . mconcat . map charRef . T.unpack) t)
+          charRef x = "&#" <> (show . ord $ x) <> ";"
 
 -- Blocks/linebreaks can be used in single-line contexts when wrapped in a
 -- div with an extra newline. The TiddlyWiki docs mention this when discussing
@@ -303,7 +320,10 @@ writeInlines inlines =
 
 writeInline :: PandocMonad m => Inline -> TiddlyWiki m Text
 
-writeInline (Str t) = return t
+writeInline (Str t) = do
+    withinHtml <- asks inHtml
+    -- Skip escaping if we're in an HTML context.
+    return $ if withinHtml then t else escape t
 
 writeInline (Emph is) = surround "//" <$> writeInlines is
 writeInline (Underline is) = surround "__" <$> writeInlines is
@@ -356,7 +376,7 @@ writeInline (Link attr is (url, _)) =
     -- want to add link attributes.
     if all isNormalText is && nullAttr == attr
         then wiki <$> inlineText
-        else wrapHtml <$> inlineText
+        else wrapHtml <$> local enterHtml inlineText
     where inlineText = writeInlines is
           wrapA = (H.a ! A.href (H.textValue url) ! toAttribute attr)
                   . H.preEscapedToHtml
@@ -381,4 +401,4 @@ writeInline (Span attr is) =
     . renderHtml
     . (H.span ! (toAttribute attr))
     . H.preEscapedText
-    <$> writeInlines is
+    <$> local enterHtml (writeInlines is)
