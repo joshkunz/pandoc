@@ -200,10 +200,15 @@ writeBlock (DefinitionList terms) =
           writeDefinitions = fmap (mjoin "\n" . map (": " <>)) . mapM writeDefinition
 
 -- https://tiddlywiki.com/#Headings%20in%20WikiText
--- TODO(jkz): Support Attrs
-writeBlock (Header level _ inlines) =
-    header <$> writeInlines inlines
-    where header v = mrepeated level "!" <> " " <> v
+writeBlock (Header level attr inlines) =
+    header (toBlockStyle attr) <$> writeInlines inlines
+    -- XXX(jkz): Should we support #ids? There's not a clean way to translate
+    -- ids, and many formats *always* provide ids. Maybe we can match the ID
+    -- against the generated header?
+    where header (OnlyClasses cs) =
+              prefix (mjoin mempty . map ("." <>) $ cs)
+          header _ = prefix mempty
+          prefix c v = mrepeated level "!" <> c <> " " <> v
 
 -- https://tiddlywiki.com/#Horizontal%20Rules%20in%20WikiText
 writeBlock HorizontalRule = return "---"
