@@ -40,7 +40,10 @@ list item.
 Here’s one with a bullet.
 * criminey.
 
-There should be a hard line breakhere.
+"""
+There should be a hard line break
+here.
+"""
 
 ---
 
