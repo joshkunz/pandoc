@@ -301,8 +301,12 @@ writeInline (Link attr is (url, _)) =
           wrapHtml = L.toStrict . renderHtml . wrapA
           wiki body = "[[" <> body <> "|" <> url <> "]]"
 
--- TODO(jkz): Support Image.
-writeInline i@Image{} = T.empty <$ report (InlineNotRendered i)
+-- TODO(jkz): Support attrs for image including height/width.
+writeInline i@(Image _ is (url, _))
+    | all isNormalText is =
+        img <$> writeInlines is
+    | otherwise           = T.empty <$ report (InlineNotRendered i)
+    where img title = "[img[" <> title <> "|" <> url <> "]]"
 
 -- TODO(jkz): Support Note.
 writeInline i@Note{} = T.empty <$ report (InlineNotRendered i)
