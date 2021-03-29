@@ -6,7 +6,7 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as L
 import Text.Pandoc.Class.PandocMonad (PandocMonad, report)
-import Text.Pandoc.Options (WriterOptions, writerPreferAscii)
+import Text.Pandoc.Options (WriterOptions (writerHTMLMathMethod, writerPreferAscii), HTMLMathMethod(..))
 import Text.Pandoc.Definition
 import Text.Pandoc.Logging (LogMessage(..))
 import Data.List (intersperse)
@@ -18,6 +18,9 @@ import Text.Blaze.Html.Renderer.Text
 import Data.Maybe (catMaybes)
 import Data.String (IsString(..))
 import Data.Char (isSpace)
+import qualified Text.TeXMath as TeX
+import Text.Pandoc.Writers.Math (convertMath)
+import Text.XML.Light.Output (ppElement, showElement)
 
 data Environment =
     Environment { inBlockQuote :: Bool
@@ -78,6 +81,7 @@ wrapLinebreaks = surroundBlock2 "<div>\n" "</div>"
 isBreak :: Inline -> Bool
 isBreak SoftBreak = True
 isBreak LineBreak = True
+isBreak (Math DisplayMath _) = True
 isBreak _ = False
 
 isLineBreak :: Inline -> Bool
@@ -176,6 +180,25 @@ wrapQuote DoubleQuote v = do
     return $ if preferAscii then "\"" <> v <> "\""
                             else "\8220" <> v <> "\8221"
 
+writeMathML :: PandocMonad m => MathType -> Text -> TiddlyWiki m Text
+writeMathML type_ math = do
+    converted <- convertMath TeX.writeMathML type_ math
+    case converted of
+        Right e -> return . T.pack $ case type_ of
+            InlineMath -> showElement e
+            DisplayMath -> ppElement e
+        Left i -> writeInline i
+
+writeMath :: PandocMonad m => MathType -> Text -> TiddlyWiki m Text
+writeMath type_ m = do
+    mode <- asksOption writerHTMLMathMethod
+    case mode of
+        MathML -> writeMathML type_ m
+        -- Based on the Syntax of https://tiddlywiki.com/#KaTeX%20Plugin
+        KaTeX _ -> return $ case type_ of
+            InlineMath -> surround "$$" m
+            DisplayMath -> surroundBlock "$$" m
+        _ -> return . surround "`" $ m
 
 writeBlocks :: PandocMonad m => [Block] -> TiddlyWiki m Text
 writeBlocks =
@@ -319,8 +342,7 @@ writeInline i@LineBreak = do
         then return "\n"
         else T.empty <$ report (InlineNotRendered i)
 
--- TODO(jkz): Support Math.
-writeInline i@Math{} = T.empty <$ report (InlineNotRendered i)
+writeInline (Math type_ m) = writeMath type_ m
 
 -- HTML is rendered direclty inline https://tiddlywiki.com/#HTML%20in%20WikiText
 writeInline (RawInline f t)
