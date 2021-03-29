@@ -151,10 +151,10 @@ toBlockStyle attr = RawStyle attr
 writeDiv :: BlockStyle -> Text -> Text
 writeDiv NoBlockStyle = id
 writeDiv (OnlyClasses cs) =
-    surroundBlock2 ("@@@" <> (classString cs)) "@@@"
+    surroundBlock2 ("@@" <> (classString cs)) "@@"
     where classString = (mjoin mempty) . map ("." <>)
 writeDiv (OnlyCSSStyle style) =
-    surroundBlock2 ("@@@" <> (condense style)) "@@@"
+    surroundBlock2 ("@@" <> (condense style)) "@@"
     where condense = T.pack . filter isSpace . T.unpack
 writeDiv (RawStyle attr) =
     L.toStrict . renderHtml . wrap
@@ -278,8 +278,10 @@ writeInline (Strikeout is) = surround "~~" <$> writeInlines is
 writeInline (Superscript is) = surround "^^" <$> writeInlines is
 writeInline (Subscript is) = surround ",," <$> writeInlines is
 
--- TODO(jkz): Support Small Caps.
-writeInline i@SmallCaps{} = T.empty <$ report (InlineNotRendered i)
+writeInline (SmallCaps is) =
+    -- TiddlyWiki markup doesn't support small caps, so we wrap it in a
+    -- small-caps style.
+    surroundBlock2 "@@font-variant-caps: small-caps;" "@@" <$> writeInlines is
 
 -- TODO(jkz): Support Quoted.
 writeInline i@Quoted{} = T.empty <$ report (InlineNotRendered i)
@@ -337,4 +339,9 @@ writeInline i@(Image _ is (url, _))
 -- TODO(jkz): Support Note.
 writeInline i@Note{} = T.empty <$ report (InlineNotRendered i)
 
-writeInline (Span attr is) = writeDiv (RawStyle attr) <$> writeInlines is
+writeInline (Span attr is) =
+    L.toStrict
+    . renderHtml
+    . (H.span ! (toAttribute attr))
+    . H.preEscapedText
+    <$> writeInlines is
