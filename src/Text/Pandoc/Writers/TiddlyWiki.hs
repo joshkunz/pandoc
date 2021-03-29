@@ -20,13 +20,21 @@ import Data.Maybe (catMaybes)
 import Data.String (IsString(..))
 import Data.Char (isSpace)
 
-newtype Environment = Environment { inBlockQuote :: Bool }
+data Environment =
+    Environment { inBlockQuote :: Bool
+                , inLineBreakBlock :: Bool
+                }
 
 enterBlockQuote :: Environment -> Environment
 enterBlockQuote e = e { inBlockQuote = True }
 
+enterLineBreakBlock :: Environment -> Environment
+enterLineBreakBlock e = e { inLineBreakBlock = True }
+
 instance Default Environment where
-    def = Environment { inBlockQuote = False }
+    def = Environment { inBlockQuote = False
+                      , inLineBreakBlock = False
+                      }
 
 type TiddlyWiki m = ReaderT Environment m
 
@@ -72,6 +80,10 @@ isBreak :: Inline -> Bool
 isBreak SoftBreak = True
 isBreak LineBreak = True
 isBreak _ = False
+
+isLineBreak :: Inline -> Bool
+isLineBreak LineBreak = True
+isLineBreak _ = False
 
 -- | Evaluates if the given block consists of a single line. Only single-line
 -- | blocks (and other list blocks) are legal list elements.
@@ -148,6 +160,13 @@ writeDiv (RawStyle attr) =
     L.toStrict . renderHtml . wrap
     where wrap = (H.div ! (toAttribute attr)) . H.preEscapedToHtml
 
+writePara :: (PandocMonad m) => [Inline] -> TiddlyWiki m Text
+writePara is
+    | any isLineBreak is = do
+        body <- local enterLineBreakBlock (writeInlines is)
+        return $ surroundBlock "\"\"\"" body
+    | otherwise = writeInlines is
+
 writeBlocks :: PandocMonad m => [Block] -> TiddlyWiki m Text
 writeBlocks =
     (fmap joinBlocks) . mapM writeBlock
@@ -155,8 +174,8 @@ writeBlocks =
 
 writeBlock :: PandocMonad m => Block -> TiddlyWiki m Text
 
-writeBlock (Plain inlines) = writeInlines inlines
-writeBlock (Para inlines) = writeInlines inlines
+writeBlock (Plain inlines) = writePara inlines
+writeBlock (Para inlines) = writePara inlines
 
 -- https://tiddlywiki.com/#Hard%20Linebreaks%20in%20WikiText
 writeBlock (LineBlock iss) =
@@ -244,11 +263,11 @@ toAttribute (identifier, classes, kvs) =
               where tag = fromString . T.unpack
           extraAttributes = map extraAttribute kvs
 
-writeInlines :: PandocMonad m => [Inline] -> m Text
+writeInlines :: PandocMonad m => [Inline] -> TiddlyWiki m Text
 writeInlines inlines =
     (fmap mconcat) . mapM writeInline $ inlines
 
-writeInline :: PandocMonad m => Inline -> m Text
+writeInline :: PandocMonad m => Inline -> TiddlyWiki m Text
 
 writeInline (Str t) = return t
 
@@ -274,10 +293,17 @@ writeInline (Code _ code)
     | otherwise                  = return $ surround "`" code
 
 writeInline Space = return " "
-writeInline SoftBreak = return "\n"
+writeInline SoftBreak = do
+    supportsLinebreak <- asks inLineBreakBlock
+    -- In line break blocks, translate soft break as space, to avoid introducing
+    -- additional hard line breaks.
+    return $ if supportsLinebreak then " " else "\n"
 
--- TODO(jkz): Support LineBreak.
-writeInline i@LineBreak = T.empty <$ report (InlineNotRendered i)
+writeInline i@LineBreak = do
+    supportsLinebreak <- asks inLineBreakBlock
+    if supportsLinebreak
+        then return "\n"
+        else T.empty <$ report (InlineNotRendered i)
 
 -- TODO(jkz): Support Math.
 writeInline i@Math{} = T.empty <$ report (InlineNotRendered i)
