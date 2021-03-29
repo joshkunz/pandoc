@@ -332,14 +332,15 @@ writeInline (Link attr is (url, _)) =
     -- Use <a> if there is non-trivial formatting in the body text, or we
     -- want to add link attributes.
     if all isNormalText is && nullAttr == attr
-        -- TODO(jkz): For wiki links, remove the | part if body == url
         then wiki <$> inlineText
         else wrapHtml <$> inlineText
     where inlineText = writeInlines is
           wrapA = (H.a ! A.href (H.textValue url) ! toAttribute attr)
                   . H.preEscapedToHtml
           wrapHtml = L.toStrict . renderHtml . wrapA
-          wiki body = "[[" <> body <> "|" <> url <> "]]"
+          wiki body
+            | body == url = "[[" <> url <> "]]"
+            | otherwise   = "[[" <> body <> "|" <> url <> "]]"
 
 -- TODO(jkz): Support attrs for image including height/width.
 writeInline i@(Image _ is (url, _))
