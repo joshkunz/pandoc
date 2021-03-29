@@ -593,17 +593,17 @@ Ellipses…and…and….
 ! LaTeX
 
 * 
-* 
-* 
-* 
-* 
-* -Tree
+* `2+2=4`
+* `x \in y`
+* `\alpha \wedge \omega`
+* `223`
+* `p`-Tree
 * <div>
 
 Here’s some display math:
-
+`\frac{d}{dx}f(x)=\lim_{h\to 0}\frac{f(x+h)-f(x)}{h}`
 </div>
-* Here’s one that has a line break in it: .
+* Here’s one that has a line break in it: `\alpha + \omega \times x^2`.
 
 
 These shouldn’t be math:
