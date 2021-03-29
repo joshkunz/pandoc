@@ -6,12 +6,11 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as L
 import Text.Pandoc.Class.PandocMonad (PandocMonad, report)
-import Text.Pandoc.Options (WriterOptions)
+import Text.Pandoc.Options (WriterOptions, writerPreferAscii)
 import Text.Pandoc.Definition
 import Text.Pandoc.Logging (LogMessage(..))
 import Data.List (intersperse)
 import Control.Monad.Reader (ReaderT(runReaderT), local, asks)
-import Data.Default (Default(..))
 import Text.Blaze.Html5 ((!))
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
@@ -23,6 +22,7 @@ import Data.Char (isSpace)
 data Environment =
     Environment { inBlockQuote :: Bool
                 , inLineBreakBlock :: Bool
+                , writerOptions :: WriterOptions
                 }
 
 enterBlockQuote :: Environment -> Environment
@@ -31,20 +31,23 @@ enterBlockQuote e = e { inBlockQuote = True }
 enterLineBreakBlock :: Environment -> Environment
 enterLineBreakBlock e = e { inLineBreakBlock = True }
 
-instance Default Environment where
-    def = Environment { inBlockQuote = False
-                      , inLineBreakBlock = False
-                      }
-
 type TiddlyWiki m = ReaderT Environment m
 
-runTiddlyWiki :: (PandocMonad m) => TiddlyWiki m a -> m a
-runTiddlyWiki r = runReaderT r def
+runTiddlyWiki :: (PandocMonad m) => WriterOptions -> TiddlyWiki m a -> m a
+runTiddlyWiki o r =
+    runReaderT r initial
+    where initial = Environment { inBlockQuote = False
+                                , inLineBreakBlock = False
+                                , writerOptions = o
+                                }
+
+asksOption :: (Monad m) => (WriterOptions -> a) -> TiddlyWiki m a
+asksOption f = asks $ f . writerOptions
 
 -- | Convert Pandoc to TiddlyWiki.
 writeTiddlyWiki:: PandocMonad m => WriterOptions -> Pandoc -> m Text
-writeTiddlyWiki _ (Pandoc _ blocks) =
-    runTiddlyWiki $ writeBlocks blocks
+writeTiddlyWiki opts (Pandoc _ blocks) =
+    runTiddlyWiki opts . writeBlocks $ blocks
 
 mrepeated :: (Monoid m) => Int -> m -> m
 mrepeated n = mconcat . replicate n
@@ -71,10 +74,6 @@ surroundBlock2 begin end on = begin <> "\n" <> on <> "\n" <> end
 -- https://tiddlywiki.com/#Lists%20in%20WikiText
 wrapLinebreaks :: Text -> Text
 wrapLinebreaks = surroundBlock2 "<div>\n" "</div>"
-
-isBlockQuote :: Block -> Bool
-isBlockQuote (BlockQuote _) = True
-isBlockQuote _ = False
 
 isBreak :: Inline -> Bool
 isBreak SoftBreak = True
@@ -166,6 +165,17 @@ writePara is
         body <- local enterLineBreakBlock (writeInlines is)
         return $ surroundBlock "\"\"\"" body
     | otherwise = writeInlines is
+
+wrapQuote :: PandocMonad m => QuoteType -> Text -> TiddlyWiki m Text
+wrapQuote SingleQuote v = do
+    preferAscii <- asksOption writerPreferAscii
+    return $ if preferAscii then "'" <> v <> "'"
+                            else "\8216" <> v <> "\8217"
+wrapQuote DoubleQuote v = do
+    preferAscii <- asksOption writerPreferAscii
+    return $ if preferAscii then "\"" <> v <> "\""
+                            else "\8220" <> v <> "\8221"
+
 
 writeBlocks :: PandocMonad m => [Block] -> TiddlyWiki m Text
 writeBlocks =
@@ -283,10 +293,12 @@ writeInline (SmallCaps is) =
     -- small-caps style.
     surroundBlock2 "@@font-variant-caps: small-caps;" "@@" <$> writeInlines is
 
--- TODO(jkz): Support Quoted.
-writeInline i@Quoted{} = T.empty <$ report (InlineNotRendered i)
+writeInline (Quoted style is) = do
+    inner <- writeInlines is
+    wrapQuote style inner
 
--- TODO(jkz): Support Cite.
+-- TiddlyWiki doesn't natively support citations, and I'm not aware of any major
+-- footnote/ref plugins, so skip cites.
 writeInline i@Cite{} = T.empty <$ report (InlineNotRendered i)
 
 writeInline (Code _ code)
@@ -336,7 +348,8 @@ writeInline i@(Image _ is (url, _))
     | otherwise           = T.empty <$ report (InlineNotRendered i)
     where img title = "[img[" <> title <> "|" <> url <> "]]"
 
--- TODO(jkz): Support Note.
+-- TiddlyWiki doesn't natively support notes, and I'm not aware of any major
+-- footnote/ref plugins, so skip notes.
 writeInline i@Note{} = T.empty <$ report (InlineNotRendered i)
 
 writeInline (Span attr is) =

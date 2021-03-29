@@ -570,17 +570,17 @@ because of the unescaped spaces: a^b c^d, a~b c~d.
 
 ! Smart quotes, ellipses, dashes
 
- said the spider. 
+“Hello,” said the spider. “‘Shelob’ is my name.”
 
-, , and  are letters.
+‘A’, ‘B’, and ‘C’ are letters.
 
-  and  are names of trees.
-So is 
+‘Oak,’ ‘elm,’ and ‘beech’ are names of trees.
+So is ‘pine.’
 
- Were you alive in the
+‘He said, “I want to go.”’ Were you alive in the
 70’s?
 
-Here is some quoted  and a .
+Here is some quoted ‘`code`’ and a “[[quoted link|http://example.com/?foo=1&bar=2]]”.
 
 Some dashes: one—two — three—four — five.
 
@@ -612,7 +612,7 @@ These shouldn’t be math:
 * <div>
 
 $22,000 is a //lot// of money. So is $34,000.
-(It worked if  is emphasized.)
+(It worked if “lot” is emphasized.)
 </div>
 * Shoes ($20) and socks ($5).
 * Escaped `$`: $73 //this should be emphasized// 23$.
@@ -758,7 +758,7 @@ or here: <http://example.com/>
 
 ! Images
 
-From  by Georges Melies (1902):
+From “Voyage dans la Lune” by Georges Melies (1902):
 
 [img[lalune|lalune.jpg]]
 
