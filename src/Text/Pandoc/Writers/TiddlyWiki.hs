@@ -307,5 +307,4 @@ writeInline i@Image{} = T.empty <$ report (InlineNotRendered i)
 -- TODO(jkz): Support Note.
 writeInline i@Note{} = T.empty <$ report (InlineNotRendered i)
 
--- TODO(jkz): Support attrs via an HTML wrapper.
-writeInline (Span _ is) = writeInlines is
+writeInline (Span attr is) = writeDiv (RawStyle attr) <$> writeInlines is
