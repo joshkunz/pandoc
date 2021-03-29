@@ -136,18 +136,16 @@ toBlockStyle (iden, cls, []) | T.null iden = OnlyClasses cls
 toBlockStyle (iden, [], [("style", s)]) | T.null iden = OnlyCSSStyle s
 toBlockStyle attr = RawStyle attr
 
-writeDiv :: (PandocMonad m) => BlockStyle -> [Block] -> TiddlyWiki m Text
-writeDiv NoBlockStyle = writeBlocks
+writeDiv :: BlockStyle -> Text -> Text
+writeDiv NoBlockStyle = id
 writeDiv (OnlyClasses cs) =
-    (fmap wrap) . writeBlocks
+    surroundBlock2 ("@@@" <> (classString cs)) "@@@"
     where classString = (mjoin mempty) . map ("." <>)
-          wrap = surroundBlock2 ("@@@" <> (classString cs)) "@@@"
 writeDiv (OnlyCSSStyle style) =
-    (fmap wrap) . writeBlocks
+    surroundBlock2 ("@@@" <> (condense style)) "@@@"
     where condense = T.pack . filter isSpace . T.unpack
-          wrap = surroundBlock2 ("@@@" <> (condense style)) "@@@"
 writeDiv (RawStyle attr) =
-    fmap (L.toStrict . renderHtml . wrap) . writeBlocks
+    L.toStrict . renderHtml . wrap
     where wrap = (H.div ! (toAttribute attr)) . H.preEscapedToHtml
 
 writeBlocks :: PandocMonad m => [Block] -> TiddlyWiki m Text
@@ -165,8 +163,8 @@ writeBlock (LineBlock iss) =
     fmap (surroundBlock "\"\"\"") . body $ iss
     where body = fmap (mjoin "\n") . mapM writeInlines
 
--- TODO(jkz): Actually handle attrs.
-writeBlock (CodeBlock _ text) = return . surroundBlock "```" $ text
+writeBlock (CodeBlock attr text) =
+    return . writeDiv (toBlockStyle attr) . surroundBlock "```" $ text
 
 -- https://tiddlywiki.com/#HTML%20in%20WikiText
 writeBlock (RawBlock f text)
@@ -213,7 +211,7 @@ writeBlock HorizontalRule = return "---"
 -- TODO(jkz): Implement tables.
 writeBlock b@(Table{}) = T.empty <$ report (BlockNotRendered b)
 
-writeBlock (Div a bs) = writeDiv (toBlockStyle a) bs
+writeBlock (Div a bs) = writeDiv (toBlockStyle a) <$> writeBlocks bs
 
 writeBlock Null = return T.empty
 
