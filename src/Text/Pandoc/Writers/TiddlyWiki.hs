@@ -234,6 +234,7 @@ writeBlock (BlockQuote bs) =
 -- numbered lists.
 writeBlock (OrderedList _ bss) = writeList $ TiddlyList Numbered bss
 
+-- TODO(jkz): Clean up formatting for nested with just Para and BulletList.
 writeBlock (BulletList bss) = writeList $ TiddlyList Bullet bss
 
 -- Contrary to Pandoc terminology, TiddlyWiki does not consider definitions
