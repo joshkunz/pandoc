@@ -18,6 +18,7 @@ import qualified Text.Blaze.Html5.Attributes as A
 import Text.Blaze.Html.Renderer.Text
 import Data.Maybe (catMaybes)
 import Data.String (IsString(..))
+import Data.Char (isSpace)
 
 newtype Environment = Environment { inBlockQuote :: Bool }
 
@@ -124,6 +125,31 @@ writeListItem styles bs =
     wrap <$> writeBlocks bs
     where wrap x = T.pack (show styles) <> " " <> wrapLinebreaks x
 
+data BlockStyle = NoBlockStyle
+                | OnlyClasses [Text]
+                | OnlyCSSStyle Text
+                | RawStyle Attr
+
+toBlockStyle :: Attr -> BlockStyle
+toBlockStyle s | s == nullAttr = NoBlockStyle
+toBlockStyle (iden, cls, []) | T.null iden = OnlyClasses cls
+toBlockStyle (iden, [], [("style", s)]) | T.null iden = OnlyCSSStyle s
+toBlockStyle attr = RawStyle attr
+
+writeDiv :: (PandocMonad m) => BlockStyle -> [Block] -> TiddlyWiki m Text
+writeDiv NoBlockStyle = writeBlocks
+writeDiv (OnlyClasses cs) =
+    (fmap wrap) . writeBlocks
+    where classString = (mjoin mempty) . map ("." <>)
+          wrap = surroundBlock2 ("@@@" <> (classString cs)) "@@@"
+writeDiv (OnlyCSSStyle style) =
+    (fmap wrap) . writeBlocks
+    where condense = T.pack . filter isSpace . T.unpack
+          wrap = surroundBlock2 ("@@@" <> (condense style)) "@@@"
+writeDiv (RawStyle attr) =
+    fmap (L.toStrict . renderHtml . wrap) . writeBlocks
+    where wrap = (H.div ! (toAttribute attr)) . H.preEscapedToHtml
+
 writeBlocks :: PandocMonad m => [Block] -> TiddlyWiki m Text
 writeBlocks =
     (fmap joinBlocks) . mapM writeBlock
@@ -187,8 +213,7 @@ writeBlock HorizontalRule = return "---"
 -- TODO(jkz): Implement tables.
 writeBlock b@(Table{}) = T.empty <$ report (BlockNotRendered b)
 
--- TODO(jkz): Implement divs.
-writeBlock b@(Div _ _) = T.empty <$ report (BlockNotRendered b)
+writeBlock (Div a bs) = writeDiv (toBlockStyle a) bs
 
 writeBlock Null = return T.empty
 
