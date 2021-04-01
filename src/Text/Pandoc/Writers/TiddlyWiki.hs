@@ -26,17 +26,21 @@ data Environment =
     Environment { inBlockQuote :: Bool
                 , inLineBreakBlock :: Bool
                 , inHtml :: Bool
+                , skipSoftBreak :: Bool
                 , writerOptions :: WriterOptions
                 }
 
-enterBlockQuote :: Environment -> Environment
-enterBlockQuote e = e { inBlockQuote = True }
+enterBlockQuote :: (PandocMonad m) => TiddlyWiki m a -> TiddlyWiki m a
+enterBlockQuote = local (\e -> e { inBlockQuote = True })
 
-enterLineBreakBlock :: Environment -> Environment
-enterLineBreakBlock e = e { inLineBreakBlock = True }
+enterLineBreakBlock :: (PandocMonad m) => TiddlyWiki m a -> TiddlyWiki m a
+enterLineBreakBlock = local (\e -> e { inLineBreakBlock = True })
 
-enterHtml :: Environment -> Environment
-enterHtml e = e { inHtml = True }
+enterHtml :: (PandocMonad m) => TiddlyWiki m a -> TiddlyWiki m a
+enterHtml = local (\e -> e { inHtml = True })
+
+enterListEntry :: (PandocMonad m) => TiddlyWiki m a -> TiddlyWiki m a
+enterListEntry = local (\e -> e { skipSoftBreak = True })
 
 type TiddlyWiki m = ReaderT Environment m
 
@@ -46,6 +50,7 @@ runTiddlyWiki o r =
     where initial = Environment { inBlockQuote = False
                                 , inLineBreakBlock = False
                                 , inHtml = False
+                                , skipSoftBreak = False
                                 , writerOptions = o
                                 }
 
@@ -53,7 +58,8 @@ asksOption :: (Monad m) => (WriterOptions -> a) -> TiddlyWiki m a
 asksOption f = asks $ f . writerOptions
 
 -- | Convert Pandoc to TiddlyWiki.
-writeTiddlyWiki:: PandocMonad m => WriterOptions -> Pandoc -> m Text
+writeTiddlyWiki :: PandocMonad m => WriterOptions -> Pandoc -> m Text
+-- TODO(jkz): Support meta.
 writeTiddlyWiki opts (Pandoc _ blocks) =
     runTiddlyWiki opts . writeBlocks $ blocks
 
@@ -95,24 +101,35 @@ escape = escape' "`"
 wrapLinebreaks :: Text -> Text
 wrapLinebreaks = surroundBlock2 "<div>\n" "</div>"
 
-isBreak :: Inline -> Bool
-isBreak SoftBreak = True
-isBreak LineBreak = True
-isBreak (Math DisplayMath _) = True
-isBreak _ = False
+isHardBreak :: Inline -> Bool
+isHardBreak LineBreak = True
+isHardBreak (Math DisplayMath _) = True
+isHardBreak _ = False
 
 isLineBreak :: Inline -> Bool
 isLineBreak LineBreak = True
 isLineBreak _ = False
 
--- | Evaluates if the given block consists of a single line. Only single-line
--- | blocks (and other list blocks) are legal list elements.
-isSingleLine :: Block -> Bool
-isSingleLine =
-    maybe False (not . any isBreak) . inlines
+-- | Evaluates if the given block can be written as a single line. Only
+-- single-line blocks, or blocks with less than 3 SoftBreaks are legal list
+-- elements.
+canBeSingleLine :: Block -> Bool
+canBeSingleLine =
+    maybe False (not . needsBreak) . inlines
     where inlines (Plain is) = Just is
           inlines (Para is) = Just is
           inlines _ = Nothing
+          needsBreak is = any isHardBreak is || tooManySoftBreaks is
+          -- True if there are more than 3 soft breaks.
+          tooManySoftBreaks = (>= 3) . sum . map (fromEnum . isSoftBreak)
+          isSoftBreak SoftBreak = True
+          isSoftBreak _ = False
+
+-- | Evaluates if this block is a list.
+isList :: Block -> Bool
+isList BulletList{} = True
+isList OrderedList{} = True
+isList _ = False
 
 -- | Add the given prefix to the beginning of each line in the given text.
 indent :: Text -> Text -> Text
@@ -127,27 +144,61 @@ instance Show ListStyle where
     show (Nested first rest) = show rest <> show first
 
 instance Semigroup ListStyle where
+    -- Appending NoStyle is meaningless, so just ignore it.
+    (<>) l NoStyle = l
     -- The outermost nesting is always the first elem, so flip the argument.
-    (<>) = flip Nested
+    (<>) l r = Nested r l
 
 instance Monoid ListStyle where
     mempty = NoStyle
 
 data TiddlyList = TiddlyList ListStyle [[Block]]
 
+-- | TiddlyWiki's list syntax only supports blocks without line breaks, and
+-- other nested lists. Some readers translate nested lists as
+--  <ListType> .. [[(Para ...), (<ListType> ...)]]
+-- That is to say, a single list item with multiple blocks, a Plain/Para and
+-- a nested list. This function detects if such lists are convertable to native
+-- TiddlyWiki Syntax, or if they need to use the less user-friendly extended
+-- syntax.
+isListTiddlyCompatible :: [[Block]] -> Bool
+isListTiddlyCompatible [] = True
+isListTiddlyCompatible ([] : bss) = isListTiddlyCompatible bss
+isListTiddlyCompatible ([b] : bss)
+    | canBeSingleLine b = isListTiddlyCompatible bss
+    | isList b = isListTiddlyCompatible bss
+-- Paragraph followed by a nested list.
+isListTiddlyCompatible ([b1, b2] : bss)
+    | canBeSingleLine b1 && isList b2 = isListTiddlyCompatible bss
+isListTiddlyCompatible _ = False
+
 writeList :: PandocMonad m => TiddlyList -> TiddlyWiki m Text
 writeList = writeNestedList mempty
 
-writeNestedList :: PandocMonad m => ListStyle -> TiddlyList -> TiddlyWiki m Text
-writeNestedList styles (TiddlyList style bss) =
-    mconcat . map (<> "\n") <$> mapM writeItem bss
+-- | Write the given TiddlyList with no special case handling. This avoids the
+-- infinite recursion caused by isListTiddlyCompatible (since the
+-- isListTiddlyWikiCompatible) case recurses on a tiddly-compatible list.
+writeNestedListNoSpecial :: PandocMonad m => ListStyle -> TiddlyList -> TiddlyWiki m Text
+writeNestedListNoSpecial styles (TiddlyList style bss) =
+    mjoin "\n" <$> mapM writeItem bss
     where writeItem = writeListItem (styles <> style)
+
+writeNestedList :: PandocMonad m => ListStyle -> TiddlyList -> TiddlyWiki m Text
+-- Special Case: Some readers translate nested lists as a single item with
+-- several blocks. Try to detected nested cases that could be translated to
+-- TiddlyWiki's nested list syntax, and treat them like lists of serveral items.
+writeNestedList styles l@(TiddlyList style bss)
+    | isListTiddlyCompatible bss =
+        -- Tiddly-compatible lists are equivalent to a single list, with each
+        -- item as a single block from the original list.
+        writeNestedListNoSpecial styles . TiddlyList style . map pure . concat $ bss
+    | otherwise                  = writeNestedListNoSpecial styles l
 
 writeListItem :: PandocMonad m => ListStyle -> [Block] -> TiddlyWiki m Text
 writeListItem _ [] = return mempty
 -- Single lines can be formatted using the simple syntax.
-writeListItem styles [b] | isSingleLine b =
-    prependStyle <$> writeBlock b
+writeListItem styles [b] | canBeSingleLine b =
+    prependStyle <$> enterListEntry (writeBlock b)
     where prependStyle onto = T.pack (show styles) <> " " <> onto
 writeListItem styles [(BulletList bss)] =
     writeNestedList styles $ TiddlyList Bullet bss
@@ -183,7 +234,7 @@ writeDiv (RawStyle attr) =
 writePara :: (PandocMonad m) => [Inline] -> TiddlyWiki m Text
 writePara is
     | any isLineBreak is = do
-        body <- local enterLineBreakBlock (writeInlines is)
+        body <- enterLineBreakBlock . writeInlines $ is
         return $ surroundBlock "\"\"\"" body
     | otherwise = writeInlines is
 
@@ -245,13 +296,12 @@ writeBlock (BlockQuote bs) =
     do
         inQuote <- asks inBlockQuote
         if inQuote then indent "> " <$> writeBlocks bs
-                   else surroundBlock "<<<" <$> local enterBlockQuote (writeBlocks bs)
+                   else surroundBlock "<<<" <$> enterBlockQuote (writeBlocks bs)
 
--- TODO(jkz): Figure out if TiddlyWiki can support anything besides
--- numbered lists.
+-- TiddlyWiki only supports numeric lists that start from 1. So ignore
+-- the ListAttributes.
 writeBlock (OrderedList _ bss) = writeList $ TiddlyList Numbered bss
 
--- TODO(jkz): Clean up formatting for nested with just Para and BulletList.
 writeBlock (BulletList bss) = writeList $ TiddlyList Bullet bss
 
 -- Contrary to Pandoc terminology, TiddlyWiki does not consider definitions
@@ -263,9 +313,9 @@ writeBlock (DefinitionList terms) =
                definitions <- writeDefinitions bss
                return $ "; " <> term <> "\n" <> definitions
           writeTerm is
-            | not $ any isBreak is = writeInlines is
+            | not $ any isHardBreak is = enterListEntry . writeInlines $ is
             | otherwise            = wrapLinebreaks <$> writeInlines is
-          writeDefinition [b] | isSingleLine b = writeBlock b
+          writeDefinition [b] | canBeSingleLine b = enterListEntry . writeBlock $ b
           writeDefinition bs = wrapLinebreaks <$> writeBlocks bs
           writeDefinitions = fmap (mjoin "\n" . map (": " <>)) . mapM writeDefinition
 
@@ -352,10 +402,11 @@ writeInline (Code _ code)
 
 writeInline Space = return " "
 writeInline SoftBreak = do
+    skip <- asks skipSoftBreak
     supportsLinebreak <- asks inLineBreakBlock
     -- In line break blocks, translate soft break as space, to avoid introducing
     -- additional hard line breaks.
-    return $ if supportsLinebreak then " " else "\n"
+    return $ if skip || supportsLinebreak then " " else "\n"
 
 writeInline i@LineBreak = do
     supportsLinebreak <- asks inLineBreakBlock
@@ -376,7 +427,7 @@ writeInline (Link attr is (url, _)) =
     -- want to add link attributes.
     if all isNormalText is && nullAttr == attr
         then wiki <$> inlineText
-        else wrapHtml <$> local enterHtml inlineText
+        else wrapHtml <$> enterHtml inlineText
     where inlineText = writeInlines is
           wrapA = (H.a ! A.href (H.textValue url) ! toAttribute attr)
                   . H.preEscapedToHtml
@@ -396,9 +447,8 @@ writeInline i@(Image _ is (url, _))
 -- footnote/ref plugins, so skip notes.
 writeInline i@Note{} = T.empty <$ report (InlineNotRendered i)
 
-writeInline (Span attr is) =
-    L.toStrict
-    . renderHtml
-    . (H.span ! (toAttribute attr))
-    . H.preEscapedText
-    <$> local enterHtml (writeInlines is)
+writeInline (Span attr is) = L.toStrict
+                           . renderHtml
+                           . (H.span ! (toAttribute attr))
+                           . H.preEscapedText
+                           <$> enterHtml (writeInlines is)
