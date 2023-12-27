@@ -5,7 +5,7 @@ module Text.Pandoc.Writers.TiddlyWiki ( writeTiddlyWiki ) where
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as L
-import Text.Pandoc.Class.PandocMonad (PandocMonad, report)
+import Text.Pandoc.Class.PandocMonad (PandocMonad (trace), report)
 import Text.Pandoc.Options (WriterOptions (writerHTMLMathMethod, writerPreferAscii), HTMLMathMethod(..))
 import Text.Pandoc.Definition
 import Text.Pandoc.Logging (LogMessage(..))
@@ -21,12 +21,23 @@ import Data.Char (isSpace, ord)
 import qualified Text.TeXMath as TeX
 import Text.Pandoc.Writers.Math (convertMath)
 import Text.XML.Light.Output (ppElement, showElement)
+import Data.Map (mapWithKey, elems)
+
+-- | repeat the given monoid instances the given number of times and concatinate
+-- | all the results.
+mrepeated :: (Monoid m) => Int -> m -> m
+mrepeated n = mconcat . replicate n
+
+-- | Join the monad instances
+mjoin :: (Monoid m) => m -> [m] -> m
+mjoin sep = mconcat . (intersperse sep)
 
 data Environment =
-    Environment { inBlockQuote :: Bool
-                , inLineBreakBlock :: Bool
-                , inHtml :: Bool
-                , skipSoftBreak :: Bool
+    Environment { inBlockQuote :: !Bool
+                , inLineBreakBlock :: !Bool
+                , inHtml :: !Bool
+                , inMetaTitle :: !Bool
+                , skipSoftBreak :: !Bool
                 , writerOptions :: WriterOptions
                 }
 
@@ -42,6 +53,9 @@ enterHtml = local (\e -> e { inHtml = True })
 enterListEntry :: (PandocMonad m) => TiddlyWiki m a -> TiddlyWiki m a
 enterListEntry = local (\e -> e { skipSoftBreak = True })
 
+enterMetaTitle :: (PandocMonad m) => TiddlyWiki m a -> TiddlyWiki m a
+enterMetaTitle = local (\e -> e { inMetaTitle = True })
+
 type TiddlyWiki m = ReaderT Environment m
 
 runTiddlyWiki :: (PandocMonad m) => WriterOptions -> TiddlyWiki m a -> m a
@@ -50,6 +64,7 @@ runTiddlyWiki o r =
     where initial = Environment { inBlockQuote = False
                                 , inLineBreakBlock = False
                                 , inHtml = False
+                                , inMetaTitle = False
                                 , skipSoftBreak = False
                                 , writerOptions = o
                                 }
@@ -59,15 +74,40 @@ asksOption f = asks $ f . writerOptions
 
 -- | Convert Pandoc to TiddlyWiki.
 writeTiddlyWiki :: PandocMonad m => WriterOptions -> Pandoc -> m Text
--- TODO(jkz): Support meta.
-writeTiddlyWiki opts (Pandoc _ blocks) =
-    runTiddlyWiki opts . writeBlocks $ blocks
+writeTiddlyWiki opts (Pandoc meta blocks) =
+  (fmap mconcat) . sequence $
+      [
+        runTiddlyWiki opts . writeMeta $ meta
+      -- Only add the extra newline if there is a meta section to write.
+      , return $ if isNullMeta meta then "" else T.pack "\n"
+      , runTiddlyWiki opts . writeBlocks $ blocks
+      ]
 
-mrepeated :: (Monoid m) => Int -> m -> m
-mrepeated n = mconcat . replicate n
 
-mjoin :: (Monoid m) => m -> [m] -> m
-mjoin sep = mconcat . (intersperse sep)
+writeMeta :: PandocMonad m => Meta -> TiddlyWiki m Text
+writeMeta (Meta meta) = do
+  es <- sequence . elems . (mapWithKey formatEntry) $ meta
+  -- Use `mappend` here since we want to append to each entry
+  return $ mconcat . map (`mappend` "\n") $ es
+  where formatEntry k v = do
+          fV <- if k == "title"
+                  -- The title field is interpreted specially. Treat it is a
+                  -- raw field.
+                  then enterMetaTitle (writeMetaValue v)
+                  else writeMetaValue v
+          return $ k <> ": " <> fV
+
+writeMetaValue :: PandocMonad m => MetaValue -> TiddlyWiki m Text
+writeMetaValue MetaMap{} = T.empty <$ report (IgnoredElement "mappings as meta values not supported")
+writeMetaValue (MetaList ls) = mjoin " " <$> mapM writeMetaValue ls
+writeMetaValue (MetaBool b) = return . T.pack . show $ b
+writeMetaValue (MetaString t) = return t
+writeMetaValue (MetaInlines is) = do
+  formatted <- writeInlines is
+  inTitle <- asks inMetaTitle
+  return . wrapped inTitle $ formatted
+  where wrapped inTitle v = if Space `elem` is && not inTitle then "[[" <> v <> "]]" else v
+writeMetaValue MetaBlocks{} = T.empty <$ report (IgnoredElement "blocks as meta values not supported")
 
 -- | Wrap the given text `on` with the string `with`.
 surround :: Text -> Text -> Text
@@ -263,10 +303,10 @@ writeMath type_ m = do
     case mode of
         MathML -> writeMathML type_ m
         -- Based on the Syntax of https://tiddlywiki.com/#KaTeX%20Plugin
-        KaTeX _ -> return $ case type_ of
+        KaTeX _anyMath -> return $ case type_ of
             InlineMath -> surround "$$" m
             DisplayMath -> surroundBlock "$$" m
-        _ -> return . surround "`" $ m
+        _anyOtherMode -> return . surround "`" $ m
 
 writeBlocks :: PandocMonad m => [Block] -> TiddlyWiki m Text
 writeBlocks =
@@ -290,6 +330,7 @@ writeBlock (CodeBlock attr text) =
 writeBlock (RawBlock f text)
     | f == Format "html" = return text
     | f == Format "tiddlywiki" = return text
+    -- TODO support RawBlock Format == tex
 writeBlock b@(RawBlock _ _) = T.empty <$ report (BlockNotRendered b)
 
 writeBlock (BlockQuote bs) =
@@ -336,9 +377,10 @@ writeBlock HorizontalRule = return "---"
 -- TODO(jkz): Implement tables.
 writeBlock b@(Table{}) = T.empty <$ report (BlockNotRendered b)
 
-writeBlock (Div a bs) = writeDiv (toBlockStyle a) <$> writeBlocks bs
+-- TODO(jkz) Support attrs + captions
+writeBlock (Figure _ _ bs) = writeBlocks bs
 
-writeBlock Null = return T.empty
+writeBlock (Div a bs) = writeDiv (toBlockStyle a) <$> writeBlocks bs
 
 isNormalText :: Inline -> Bool
 isNormalText (Str _) = True
@@ -416,10 +458,11 @@ writeInline i@LineBreak = do
 
 writeInline (Math type_ m) = writeMath type_ m
 
--- HTML is rendered direclty inline https://tiddlywiki.com/#HTML%20in%20WikiText
+-- HTML is rendered directly inline https://tiddlywiki.com/#HTML%20in%20WikiText
 writeInline (RawInline f t)
     | f == Format "html" = return t
     | f == Format "tiddlywiki" = return t
+    -- TODO(jkz) support RawInline Format == tex
 writeInline i@(RawInline _ _) = T.empty <$ report (InlineNotRendered i)
 
 writeInline (Link attr is (url, _)) =

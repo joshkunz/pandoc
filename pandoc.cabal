@@ -627,7 +627,6 @@ library
                    Text.Pandoc.Writers.AnnotatedTable,
                    Text.Pandoc.Writers.BibTeX,
                    Text.Pandoc.Writers.TiddlyWiki,
-                   Text.Pandoc.Lua,
                    Text.Pandoc.PDF,
                    Text.Pandoc.UTF8,
                    Text.Pandoc.Scripting,
