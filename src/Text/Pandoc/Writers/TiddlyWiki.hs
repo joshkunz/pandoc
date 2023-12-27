@@ -10,7 +10,7 @@ import Text.Pandoc.Options (WriterOptions (writerHTMLMathMethod, writerPreferAsc
 import Text.Pandoc.Definition
 import Text.Pandoc.Logging (LogMessage(..))
 import Data.List (intersperse)
-import Control.Monad.Reader (ReaderT(runReaderT), local, asks)
+import Control.Monad.Reader (ReaderT(runReaderT), local, asks, zipWithM)
 import Text.Blaze.Html5 ((!))
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
@@ -122,17 +122,35 @@ surroundBlock with on = surroundBlock2 with with on
 surroundBlock2 :: Text -> Text -> Text -> Text
 surroundBlock2 begin end on = begin <> "\n" <> on <> "\n" <> end
 
+charRef :: Char -> String
+charRef x = "&#" <> (show . ord $ x) <> ";"
+
+-- | escape the given symbol in the given Text with an HTML code.
+escapeText :: Text -> Text -> Text
+escapeText t =
+  T.replace t ((T.pack . mconcat . map charRef . T.unpack) t)
+
 -- | Escape common WikiText formatting in `Str` elements.
 escape :: Text -> Text
-escape = escape' "`"
-       . escape' "//"
-       . escape' "^^"
-       . escape' "''"
-       . escape' ",,"
-       . escape' "~~"
-    where escape' t =
-            T.replace t ((T.pack . mconcat . map charRef . T.unpack) t)
-          charRef x = "&#" <> (show . ord $ x) <> ";"
+escape = escapeText "`"
+       . escapeText "//"
+       . escapeText "^^"
+       . escapeText "''"
+       . escapeText ",,"
+       . escapeText "~~"
+
+-- | Escape common table prefixes
+escapeTable :: Text -> Text
+escapeTable v =
+  T.pack $ escapeStr raw
+  where raw = T.unpack v
+        escapeStr [] = ""
+        escapeStr (first : rest)
+          | first == '!' = charRef first <> rest
+          | first == '^' = charRef first <> rest
+          | first == ',' = charRef first <> rest
+          | otherwise = first : rest
+
 
 -- Blocks/linebreaks can be used in single-line contexts when wrapped in a
 -- div with an extra newline. The TiddlyWiki docs mention this when discussing
@@ -365,7 +383,7 @@ writeBlock (DefinitionList terms) =
 -- https://tiddlywiki.com/#Headings%20in%20WikiText
 writeBlock (Header level attr inlines) =
     header (toBlockStyle attr) <$> writeInlines inlines
-    -- XXX(jkz): Should we support #ids? There's not a clean way to translate
+    -- TODO(jkz): Should we support #ids? There's not a clean way to translate
     -- ids, and many formats *always* provide ids. Maybe we can match the ID
     -- against the generated header?
     where header (OnlyClasses cs) =
@@ -377,7 +395,31 @@ writeBlock (Header level attr inlines) =
 writeBlock HorizontalRule = return "---"
 
 -- TODO(jkz): Implement tables.
-writeBlock b@(Table{}) = T.empty <$ report (BlockNotRendered b)
+writeBlock (Table _a _c colSpec head bodies foot) = do
+  -- TODO(jkz): escape table cell prefixes with escapeTable
+  -- TODO(jkz): support table captions
+  -- TODO(jkz): Investigate multi-line headers (maybe fall back to HTML?)
+  -- TODO(jkz): support footer
+  -- TODO(jkz): Support styles
+  begin <- header head
+  middle <- mapM body bodies
+  return $ begin <> "\n" <> mjoin "\n" middle
+  where cellAlign AlignLeft x = x <> " "
+        cellAlign AlignRight x = " " <> x
+        cellAlign AlignCenter x = " " <> x <> " "
+        cellAlign AlignDefault x = x
+        cellAny prefix (align, _) (Cell _ _align _ _ bs) = do
+          cellAlign align . (prefix <>) <$> writeBlocks bs
+        cellH = cellAny "!"
+        header (TableHead _ rs) =
+          mjoin "\n" <$> mapM headerRow rs
+        headerRow (Row _ cs) =
+          surround "|" . mjoin "|" <$> zipWithM cellH colSpec cs
+        bodyRow (Row _ cs) =
+          surround "|" . mjoin "|" <$> zipWithM (cellAny T.empty) colSpec cs
+        body (TableBody _ _ _ rs) =
+          mjoin "\n" <$> mapM bodyRow rs
+
 
 -- TODO(jkz) Support attrs + captions
 writeBlock (Figure _ _ bs) = writeBlocks bs
@@ -483,6 +525,7 @@ writeInline (Link attr is (url, _)) =
 
 -- TODO(jkz): Support attrs for image including height/width.
 writeInline i@(Image _ is (url, _))
+    | null is = return $ "[img[" <> url <> "]]"
     | all isNormalText is =
         img <$> writeInlines is
     | otherwise           = T.empty <$ report (InlineNotRendered i)
