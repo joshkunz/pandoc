@@ -306,7 +306,9 @@ writeMath type_ m = do
         KaTeX _anyMath -> return $ case type_ of
             InlineMath -> surround "$$" m
             DisplayMath -> surroundBlock "$$" m
-        _anyOtherMode -> return . surround "`" $ m
+        _anyOtherMode -> return $ case type_ of
+            InlineMath -> surround "`" m
+            DisplayMath -> surroundBlock "```" m
 
 writeBlocks :: PandocMonad m => [Block] -> TiddlyWiki m Text
 writeBlocks =
@@ -330,7 +332,7 @@ writeBlock (CodeBlock attr text) =
 writeBlock (RawBlock f text)
     | f == Format "html" = return text
     | f == Format "tiddlywiki" = return text
-    -- TODO support RawBlock Format == tex
+    | f == Format "tex" = writeMath DisplayMath text
 writeBlock b@(RawBlock _ _) = T.empty <$ report (BlockNotRendered b)
 
 writeBlock (BlockQuote bs) =
@@ -462,7 +464,7 @@ writeInline (Math type_ m) = writeMath type_ m
 writeInline (RawInline f t)
     | f == Format "html" = return t
     | f == Format "tiddlywiki" = return t
-    -- TODO(jkz) support RawInline Format == tex
+    | f == Format "tex" = writeMath InlineMath t
 writeInline i@(RawInline _ _) = T.empty <$ report (InlineNotRendered i)
 
 writeInline (Link attr is (url, _)) =
