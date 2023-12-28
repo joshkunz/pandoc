@@ -24,6 +24,7 @@ import Text.XML.Light.Output (ppElement, showElement)
 import Data.Map (mapWithKey, elems)
 import Text.Pandoc.Walk (Walkable(query))
 import Data.Monoid (All(All, getAll))
+import Data.List.NonEmpty (nonEmpty)
 
 -- | repeat the given monoid instances the given number of times and concatinate
 -- | all the results.
@@ -188,15 +189,16 @@ canBeFancyTableCell [x] = check x
         check _ = False
 canBeFancyTableCell _ = False
 
-data FancyTableQuery = FancyTableQuery [ColSpec] TableHead [TableBody] TableFoot
+data FancyTableQuery = FancyTableQuery Caption [ColSpec] TableHead [TableBody] TableFoot
 
 -- | Evaluates if the given table can be rendered as a fancy WikiText table. Only
 -- specific blocks can be rendered in this format, but it's more true to what
 -- a human would write. We can always fall back to HTML tables if a fancy table
 -- is not an option.
 canBeFancyTable :: FancyTableQuery -> Bool
-canBeFancyTable (FancyTableQuery _colSpec headSpec bodies foot) =
-    getAll . mconcat $ [ query (All . canBeFancyTableCell) headSpec
+canBeFancyTable (FancyTableQuery (Caption _ captionBlocks) _colSpec headSpec bodies foot) =
+    getAll . mconcat $ [ query (All . canBeFancyTableCell) captionBlocks
+                       , query (All . canBeFancyTableCell) headSpec
                        , query (All . canBeFancyTableCell) bodies
                        , query (All . canBeFancyTableCell) foot
                        ]
@@ -359,7 +361,7 @@ writeMath type_ m = do
             DisplayMath -> surroundBlock "$$" m
         _anyOtherMode -> return $ case type_ of
             InlineMath -> surround "`" m
-            DisplayMath -> surroundBlock "```" m
+            DisplayMath -> ("\n" <>) . surroundBlock "```" $ m
 
 writeBlocks :: PandocMonad m => [Block] -> TiddlyWiki m Text
 writeBlocks =
@@ -428,15 +430,18 @@ writeBlock (Header level attr inlines) =
 writeBlock HorizontalRule = return "---"
 
 -- TODO(jkz): Implement tables.
-writeBlock tableBlock@(Table _a _c colSpec headSpec bodies foot) =
+writeBlock tableBlock@(Table _a c@(Caption _ captionBlocks) colSpec headSpec bodies foot) =
   -- TODO(jkz): escape table cell prefixes with escapeTable
   -- TODO(jkz): support table captions
   -- TODO(jkz): Support styles
-  if canBeFancyTable (FancyTableQuery colSpec headSpec bodies foot) then do
+  if canBeFancyTable (FancyTableQuery c colSpec headSpec bodies foot) then do
+    caption <- case nonEmpty captionBlocks of
+      Nothing -> return T.empty
+      Just _ -> enterFancyTable . (fmap enCaption) . writeBlocks $ captionBlocks
     begin <- enterFancyTable . header $ headSpec
     middle <- enterFancyTable $ mapM body bodies
     end <- enterFancyTable . footer $ foot
-    return $ begin <> mjoin "\n" middle <> end
+    return $ begin <> mjoin "\n" middle <> end <> caption
   else
     T.empty <$ report (BlockNotRendered tableBlock)
   where cellAlign AlignLeft x = x <> " "
@@ -446,6 +451,9 @@ writeBlock tableBlock@(Table _a _c colSpec headSpec bodies foot) =
         cellKind prefix (align, _) (Cell _ _align _ _ bs) = do
           cellAlign align . (prefix <>) <$> writeBlocks bs
         cell = cellKind T.empty
+        -- convert text 'X' to '\n|X|c\n', a caption suitable for appending
+        -- to a fancy table.
+        enCaption = ("\n" <>) . (<> "c\n") . surround "|"
         header (TableHead _ []) = return T.empty
         header (TableHead _ rs) =
           (<> "\n") . mjoin "\n" <$> mapM headerRow rs
