@@ -22,6 +22,8 @@ import qualified Text.TeXMath as TeX
 import Text.Pandoc.Writers.Math (convertMath)
 import Text.XML.Light.Output (ppElement, showElement)
 import Data.Map (mapWithKey, elems)
+import Text.Pandoc.Walk (Walkable(query))
+import Data.Monoid (All(All, getAll))
 
 -- | repeat the given monoid instances the given number of times and concatinate
 -- | all the results.
@@ -32,12 +34,14 @@ mrepeated n = mconcat . replicate n
 mjoin :: (Monoid m) => m -> [m] -> m
 mjoin sep = mconcat . (intersperse sep)
 
+data SoftBreakMode = SoftBreakNormal | SoftBreakSpace | SoftBreakBR
+
 data Environment =
     Environment { inBlockQuote :: !Bool
                 , inLineBreakBlock :: !Bool
                 , inHtml :: !Bool
                 , inMetaTitle :: !Bool
-                , skipSoftBreak :: !Bool
+                , softBreakMode :: !SoftBreakMode
                 , writerOptions :: WriterOptions
                 }
 
@@ -50,8 +54,12 @@ enterLineBreakBlock = local (\e -> e { inLineBreakBlock = True })
 enterHtml :: (PandocMonad m) => TiddlyWiki m a -> TiddlyWiki m a
 enterHtml = local (\e -> e { inHtml = True })
 
+-- All we really need to do here is skip soft breaks.
 enterListEntry :: (PandocMonad m) => TiddlyWiki m a -> TiddlyWiki m a
-enterListEntry = local (\e -> e { skipSoftBreak = True })
+enterListEntry = local (\e -> e { softBreakMode = SoftBreakSpace })
+
+enterFancyTable :: (PandocMonad m) => TiddlyWiki m a -> TiddlyWiki m a
+enterFancyTable = local (\e -> e { softBreakMode = SoftBreakBR })
 
 enterMetaTitle :: (PandocMonad m) => TiddlyWiki m a -> TiddlyWiki m a
 enterMetaTitle = local (\e -> e { inMetaTitle = True })
@@ -65,7 +73,7 @@ runTiddlyWiki o r =
                                 , inLineBreakBlock = False
                                 , inHtml = False
                                 , inMetaTitle = False
-                                , skipSoftBreak = False
+                                , softBreakMode = SoftBreakNormal
                                 , writerOptions = o
                                 }
 
@@ -168,11 +176,36 @@ isLineBreak :: Inline -> Bool
 isLineBreak LineBreak = True
 isLineBreak _ = False
 
--- | Evaluates if the given block can be written as a single line. Only
+-- | Evaluates if the given block can be written as a table cell
+canBeFancyTableCell :: [Block] -> Bool
+canBeFancyTableCell [] = True
+-- Only single blocks can go in a fancy table cell. Otherwise, we'd need to
+-- break them with whitespace.
+canBeFancyTableCell [x] = check x
+  -- Only plain/para without hard breaks can go in a table cell.
+  where check (Plain is) = not . any isHardBreak $ is
+        check (Para is) = not . any isHardBreak $ is
+        check _ = False
+canBeFancyTableCell _ = False
+
+data FancyTableQuery = FancyTableQuery [ColSpec] TableHead [TableBody] TableFoot
+
+-- | Evaluates if the given table can be rendered as a fancy WikiText table. Only
+-- specific blocks can be rendered in this format, but it's more true to what
+-- a human would write. We can always fall back to HTML tables if a fancy table
+-- is not an option.
+canBeFancyTable :: FancyTableQuery -> Bool
+canBeFancyTable (FancyTableQuery _colSpec headSpec bodies foot) =
+    getAll . mconcat $ [ query (All . canBeFancyTableCell) headSpec
+                       , query (All . canBeFancyTableCell) bodies
+                       , query (All . canBeFancyTableCell) foot
+                       ]
+
+-- | Evaluates if the given block can be written as a list item. Only
 -- single-line blocks, or blocks with less than 3 SoftBreaks are legal list
 -- elements.
-canBeSingleLine :: Block -> Bool
-canBeSingleLine =
+canBeListItem :: Block -> Bool
+canBeListItem =
     maybe False (not . needsBreak) . inlines
     where inlines (Plain is) = Just is
           inlines (Para is) = Just is
@@ -223,11 +256,11 @@ isListTiddlyCompatible :: [[Block]] -> Bool
 isListTiddlyCompatible [] = True
 isListTiddlyCompatible ([] : bss) = isListTiddlyCompatible bss
 isListTiddlyCompatible ([b] : bss)
-    | canBeSingleLine b = isListTiddlyCompatible bss
+    | canBeListItem b = isListTiddlyCompatible bss
     | isList b = isListTiddlyCompatible bss
 -- Paragraph followed by a nested list.
 isListTiddlyCompatible ([b1, b2] : bss)
-    | canBeSingleLine b1 && isList b2 = isListTiddlyCompatible bss
+    | canBeListItem b1 && isList b2 = isListTiddlyCompatible bss
 isListTiddlyCompatible _ = False
 
 writeList :: PandocMonad m => TiddlyList -> TiddlyWiki m Text
@@ -255,7 +288,7 @@ writeNestedList styles l@(TiddlyList style bss)
 writeListItem :: PandocMonad m => ListStyle -> [Block] -> TiddlyWiki m Text
 writeListItem _ [] = return mempty
 -- Single lines can be formatted using the simple syntax.
-writeListItem styles [b] | canBeSingleLine b =
+writeListItem styles [b] | canBeListItem b =
     prependStyle <$> enterListEntry (writeBlock b)
     where prependStyle onto = T.pack (show styles) <> " " <> onto
 writeListItem styles [(BulletList bss)] =
@@ -376,7 +409,7 @@ writeBlock (DefinitionList terms) =
           writeTerm is
             | not $ any isHardBreak is = enterListEntry . writeInlines $ is
             | otherwise            = wrapLinebreaks <$> writeInlines is
-          writeDefinition [b] | canBeSingleLine b = enterListEntry . writeBlock $ b
+          writeDefinition [b] | canBeListItem b = enterListEntry . writeBlock $ b
           writeDefinition bs = wrapLinebreaks <$> writeBlocks bs
           writeDefinitions = fmap (mjoin "\n" . map (": " <>)) . mapM writeDefinition
 
@@ -395,31 +428,38 @@ writeBlock (Header level attr inlines) =
 writeBlock HorizontalRule = return "---"
 
 -- TODO(jkz): Implement tables.
-writeBlock (Table _a _c colSpec head bodies foot) = do
+writeBlock tableBlock@(Table _a _c colSpec headSpec bodies foot) =
   -- TODO(jkz): escape table cell prefixes with escapeTable
   -- TODO(jkz): support table captions
-  -- TODO(jkz): Investigate multi-line headers (maybe fall back to HTML?)
-  -- TODO(jkz): support footer
   -- TODO(jkz): Support styles
-  begin <- header head
-  middle <- mapM body bodies
-  return $ begin <> "\n" <> mjoin "\n" middle
+  if canBeFancyTable (FancyTableQuery colSpec headSpec bodies foot) then do
+    begin <- enterFancyTable . header $ headSpec
+    middle <- enterFancyTable $ mapM body bodies
+    end <- enterFancyTable . footer $ foot
+    return $ begin <> mjoin "\n" middle <> end
+  else
+    T.empty <$ report (BlockNotRendered tableBlock)
   where cellAlign AlignLeft x = x <> " "
         cellAlign AlignRight x = " " <> x
         cellAlign AlignCenter x = " " <> x <> " "
         cellAlign AlignDefault x = x
-        cellAny prefix (align, _) (Cell _ _align _ _ bs) = do
+        cellKind prefix (align, _) (Cell _ _align _ _ bs) = do
           cellAlign align . (prefix <>) <$> writeBlocks bs
-        cellH = cellAny "!"
+        cell = cellKind T.empty
+        header (TableHead _ []) = return T.empty
         header (TableHead _ rs) =
-          mjoin "\n" <$> mapM headerRow rs
+          (<> "\n") . mjoin "\n" <$> mapM headerRow rs
         headerRow (Row _ cs) =
-          surround "|" . mjoin "|" <$> zipWithM cellH colSpec cs
+          surround "|" . mjoin "|" <$> zipWithM (cellKind "!") colSpec cs
         bodyRow (Row _ cs) =
-          surround "|" . mjoin "|" <$> zipWithM (cellAny T.empty) colSpec cs
+          surround "|" . mjoin "|" <$> zipWithM cell colSpec cs
         body (TableBody _ _ _ rs) =
           mjoin "\n" <$> mapM bodyRow rs
-
+        footer (TableFoot _ []) = return T.empty
+        footer (TableFoot _ rs) =
+          (<> "f\n") . mjoin "\n" <$> mapM footerRow rs
+        footerRow (Row _ cs) =
+          surround "|" . mjoin "|" <$> zipWithM cell colSpec cs
 
 -- TODO(jkz) Support attrs + captions
 writeBlock (Figure _ _ bs) = writeBlocks bs
@@ -488,11 +528,15 @@ writeInline (Code _ code)
 
 writeInline Space = return " "
 writeInline SoftBreak = do
-    skip <- asks skipSoftBreak
-    supportsLinebreak <- asks inLineBreakBlock
+    mode <- asks softBreakMode
+    notSupportLinebreak <- asks inLineBreakBlock
     -- In line break blocks, translate soft break as space, to avoid introducing
     -- additional hard line breaks.
-    return $ if skip || supportsLinebreak then " " else "\n"
+    return $ if notSupportLinebreak then " " else sb mode
+    where sb m = case m of
+                  SoftBreakNormal -> "\n"
+                  SoftBreakBR -> "<br>"
+                  SoftBreakSpace -> " "
 
 writeInline i@LineBreak = do
     supportsLinebreak <- asks inLineBreakBlock
