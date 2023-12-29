@@ -238,7 +238,13 @@ tests pandocPath =
     ]
   , testGroup "markua" [ testGroup "writer" $ writerTests' "markua"]
   , testGroup "tiddlywiki"
-    [ testGroup "writer" $ writerTests' "tiddlywiki"
+    [ testGroup "writer"
+      [ testGroup "common" $ writerTests' "tiddlywiki"
+      , testGroup "extra"
+        [ test' "tables" [ "-f", "native", "-t", "tiddlywiki" ]
+            "tiddlywiki/writer-tables-extra.native" "tiddlywiki/writer-tables-extra.tiddlywiki"
+        ]
+      ]
     ]
   ]
  where

@@ -4,6 +4,7 @@ Simple table with caption:
 | 12|12 | 12 |12|
 | 123|123 | 123 |123|
 | 1|1 | 1 |1|
+|Demonstration of simple table syntax.|c
 
 Simple table without caption:
 
@@ -18,12 +19,14 @@ Simple table indented two spaces:
 | 12|12 | 12 |12|
 | 123|123 | 123 |123|
 | 1|1 | 1 |1|
+|Demonstration of simple table syntax.|c
 
 Multiline table with caption:
 
 | !Centered<br>Header |!Left<br>Aligned | !Right<br>Aligned|!Default aligned |
 | First |row | 12.0|Example of a row that spans<br>multiple lines. |
 | Second |row | 5.0|Here’s another one. Note<br>the blank line between rows. |
+|Here’s the caption.<br>It may span multiple lines.|c
 
 Multiline table without caption:
 

@@ -1,0 +1,15 @@
+Simple table with Footer:
+
+| !Right|!Left | !Center |!Default|
+| 12|12 | 12 |12|
+| 123|123 | 123 |123|
+| 1|1 | 1 |1|
+| a|b | b |c|f
+| 1|2 | 3 |4|f
+|Demonstration of simple table syntax.|c
+
+Escaping Significant Cell Characters:
+
+| !&#33;begin|!L!eft | !Center! |
+| &#33;extra|non-head! | &#33; line |
+| &#44;123|&#94;123 | &#44;123 |

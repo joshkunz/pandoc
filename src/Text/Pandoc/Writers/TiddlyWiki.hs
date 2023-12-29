@@ -125,12 +125,14 @@ surround with on = with <> on <> with
 -- | Wrap the given text `on` with the string `with` with newlines
 -- | before and after.
 surroundBlock :: Text -> Text -> Text
-surroundBlock with on = surroundBlock2 with with on
+surroundBlock with = surroundBlock2 with with
 
 -- | Wrap the given text `on` with `begin` and `end`.
 surroundBlock2 :: Text -> Text -> Text -> Text
 surroundBlock2 begin end on = begin <> "\n" <> on <> "\n" <> end
 
+-- | Return a tiddlywiki compatible reference string for the given character
+-- | this should work for escaping most characters.
 charRef :: Char -> String
 charRef x = "&#" <> (show . ord $ x) <> ";"
 
@@ -431,8 +433,6 @@ writeBlock HorizontalRule = return "---"
 
 -- TODO(jkz): Implement tables.
 writeBlock tableBlock@(Table _a c@(Caption _ captionBlocks) colSpec headSpec bodies foot) =
-  -- TODO(jkz): escape table cell prefixes with escapeTable
-  -- TODO(jkz): support table captions
   -- TODO(jkz): Support styles
   if canBeFancyTable (FancyTableQuery c colSpec headSpec bodies foot) then do
     caption <- case nonEmpty captionBlocks of
@@ -449,11 +449,11 @@ writeBlock tableBlock@(Table _a c@(Caption _ captionBlocks) colSpec headSpec bod
         cellAlign AlignCenter x = " " <> x <> " "
         cellAlign AlignDefault x = x
         cellKind prefix (align, _) (Cell _ _align _ _ bs) = do
-          cellAlign align . (prefix <>) <$> writeBlocks bs
+          cellAlign align . (prefix <>) . escapeTable <$> writeBlocks bs
         cell = cellKind T.empty
-        -- convert text 'X' to '\n|X|c\n', a caption suitable for appending
+        -- convert text 'X' to '\n|X|c', a caption suitable for appending
         -- to a fancy table.
-        enCaption = ("\n" <>) . (<> "c\n") . surround "|"
+        enCaption = ("\n" <>) . (<> "c") . surround "|"
         header (TableHead _ []) = return T.empty
         header (TableHead _ rs) =
           (<> "\n") . mjoin "\n" <$> mapM headerRow rs
@@ -465,9 +465,11 @@ writeBlock tableBlock@(Table _a c@(Caption _ captionBlocks) colSpec headSpec bod
           mjoin "\n" <$> mapM bodyRow rs
         footer (TableFoot _ []) = return T.empty
         footer (TableFoot _ rs) =
-          (<> "f\n") . mjoin "\n" <$> mapM footerRow rs
+          -- Need the leading \n here, because the table rows won't have a
+          -- terminating newline.
+          ("\n" <>) . mjoin "\n" <$> mapM footerRow rs
         footerRow (Row _ cs) =
-          surround "|" . mjoin "|" <$> zipWithM cell colSpec cs
+          (<> "f") . surround "|" . mjoin "|" <$> zipWithM cell colSpec cs
 
 -- TODO(jkz) Support attrs + captions
 writeBlock (Figure _ _ bs) = writeBlocks bs
